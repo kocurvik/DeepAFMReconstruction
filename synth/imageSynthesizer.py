@@ -5,28 +5,16 @@ Usage:
     syn = Synthesizer(params)
     syn.generateData()
 """
-import matplotlib.pyplot as plt
-import numpy as np
-from imageio import imwrite
 import math
-import cv2
 from scipy.ndimage import gaussian_filter
-from scipy import ndimage
 import imageio
-import pickle
-from skimage import io
 # from DataManipulator import DataManipulator
-from skimage.color import rgb2gray
-from skimage import transform
-import random
 import gwyfile
-import os
-import shutil
-from PIL import Image, ImageFilter
+from PIL import ImageFilter
 import copy
-import sys
+
 # from Registration import Registration, defaultParams
-from tipEstimation import *
+from synth.shapes import ShapeClass, Bubble, Rectangle, Barrel, Deformation
 from SEMSim import *
 
 # params used for SEM simulation
@@ -69,201 +57,6 @@ params = {
     'kernelFiles' : ['tips.gwy']
 }
 
-class ShapeClass():
-    """
-    Class representing different shapes added to generated images
-    """
-    def __init__(self, boundingBoxSize):
-        """
-        :param boundingBoxSize: every added object is in rectangle bounding box
-        """
-        self.x = boundingBoxSize[0]
-        self.y = boundingBoxSize[1]
-        self.shapeArr = None
-        self.transforms = False
-        self.normalize = self.normalize_inst
-        self.resize = self.resize_inst
-        self.inverted = False
-        self.doNotResize = False
-
-    def scaleHeight(self, factor):
-        self.shapeArr = self.shapeArr * factor
-
-    def createPyramid(self, iterations):
-        """
-        Stacks objects on each other
-        :param iterations: number of stacked objects
-        :return: changes shapeArr
-        """
-        center = (self.x // 2, self.y // 2)
-        #tanX = math.tan(deg * math.pi / 180)
-        #incX = (tanX * center[0]) / iterations
-
-        resizeParams = (center[0] // iterations, center[1] // iterations)
-        resizedArray = self.shapeArr
-        x = self.x
-        y = self.y
-        for i in range(0, iterations):
-            x = x - resizeParams[0]
-            y = y - resizeParams[1]
-            resizedArray = ShapeClass.resize((x, y), resizedArray)
-            self.mergeObjects(resizedArray)
-        self.normalize_inst()
-
-    def invert(self):
-        self.inverted = not self.inverted
-        self.shapeArr *= -1
-
-    @staticmethod
-    def resize(newSize, img):
-        return transform.resize(img, newSize, preserve_range=True)
-
-    def resize_inst(self, newSize):
-        self.x = newSize[0]
-        self.y = newSize[1]
-        self.shapeArr = transform.resize(self.shapeArr, newSize, preserve_range=True)
-
-    def rotate(self, deg):
-        self.shapeArr = ndimage.rotate(self.shapeArr, deg, reshape=True)
-        self.x = np.shape(self.shapeArr)[0]
-        self.y = np.shape(self.shapeArr)[1]
-
-    def normalize_inst(self, arr=None):
-        if arr is None:
-            if self.shapeArr.min() == self.shapeArr.max():
-                return
-            self.shapeArr = (self.shapeArr - self.shapeArr.min()) / (self.shapeArr.max() - self.shapeArr.min())
-        else:
-            if arr.min() == arr.max():
-                return
-            return (arr - arr.min()) / (arr.max() - arr.min())
-
-    @staticmethod
-    def normalize(arr=None, distortion=0):
-        if arr.min() == arr.max():
-            return arr
-        else:
-            min = arr.min() + distortion if random.uniform(0,1) > 0.5 else arr.min()
-            max = arr.max() - distortion if random.uniform(0,1) > 0.5 else arr.max()
-            retval = (arr - min) / (max - min)
-            return retval
-
-    @staticmethod
-    def addPixelNoise(image, range):
-        mask = np.random.rand(np.shape(image)[0], np.shape(image)[1])
-        mask = (range[1] - range[0]) * mask + range[0]
-        image += mask
-        return image
-
-    def addBumps(self):
-        """
-        Add bumps to shapeArr
-        :return:
-        """
-        syn = Synthesizer()
-        syn.setParameters(params)
-        filter = syn.createFilter(1)
-        syn.addFilter(filter, self.shapeArr, noZero=True)
-        self.shapeArr = Synthesizer.dilate(self.shapeArr, self.createGaussKernels(5, 1)[0])
-
-    def rotateHeight(self, degX, degY):
-        """
-        Rotation along x and y axis
-        :param degX:
-        :param degY:
-        :return:
-        """
-        tanX = math.tan(degX * math.pi / 180)
-        tanY = math.tan(degY * math.pi / 180)
-        for i in range(0,self.x):
-            for j in range(0, self.y):
-                self.shapeArr[i][j] += ((j + 1) * tanX) + ((i + 1) * tanY)
-        self.shapeArr = (self.shapeArr - self.shapeArr.min()) / (self.shapeArr.max() - self.shapeArr.min())
-        self.normalize_inst()
-
-    # shapeObjMerge must have smaller or equal bounding box
-    def mergeObjects(self, shapeObjMerge, inverse=False):
-        """
-        Merge shapeObjMerge into current object
-        :param shapeObjMerge: object to merge
-        :param inverse: invert shapeObjMerge
-        :return: shapeArr is changed
-        """
-        if isinstance(shapeObjMerge, ShapeClass):
-            r = int((self.x - shapeObjMerge.x) / 2)
-            s = int((self.y - shapeObjMerge.y) / 2)
-            if inverse:
-                shapeObjMerge.shapeArr *= (-1)
-            for i in range(0, shapeObjMerge.x):
-                for j in range(0, shapeObjMerge.y):
-                    self.shapeArr[i + r][j + s] += shapeObjMerge.shapeArr[i][j]
-        else:
-            x = np.shape(shapeObjMerge)[0]
-            y = np.shape(shapeObjMerge)[1]
-            r = int((self.x - x) / 2)
-            s = r = int((self.y - y) / 2)
-            if inverse:
-                shapeObjMerge *= (-1)
-            for i in range(0, x):
-                for j in range(0, y):
-                    self.shapeArr[i + r][j + s] += shapeObjMerge[i][j]
-        #self.normalize_inst()
-
-class Bubble(ShapeClass):
-    """
-    Bubble class
-    """
-    def __init__(self, boundingBoxSize):
-        super(Bubble, self).__init__(boundingBoxSize)
-        self.shapeArr = np.zeros((boundingBoxSize[0], boundingBoxSize[1]))
-        self.center = (int(self.x / 2), int(self.y / 2))
-        for i in range(0, self.x):
-            flag = False
-            r = 0
-            for j in range(0, self.y):
-                if not flag:
-                    if ((i - self.center[0])**2 / self.center[0]**2) + ((j - self.center[1])**2 / self.center[1]**2) <= 1:
-                        flag = True
-                        r = self.center[1] - j
-                else:
-                    if j > self.center[1] + r:
-                        break
-                    self.shapeArr[i][j] = math.sqrt(r**2 - (self.center[1] - j)**2)
-        self.shapeArr = self.shapeArr / self.shapeArr.max()
-
-class Rectangle(ShapeClass):
-    """
-    Rectangle class
-    """
-    def __init__(self, boundingBoxSize):
-        super(Rectangle, self).__init__(boundingBoxSize)
-        self.shapeArr = np.ones((boundingBoxSize[0], boundingBoxSize[1]))
-
-
-class Barrel(ShapeClass):
-    """
-    Barrel class
-    """
-    def __init__(self, boundingBoxSize):
-        super(Barrel, self).__init__(boundingBoxSize)
-        self.shapeArr = np.zeros((boundingBoxSize[0], boundingBoxSize[1]))
-        self.center = (int(self.x / 2), int(self.y / 2))
-        for i in range(0, self.x):
-            for j in range(0, self.y):
-                if ((i - self.center[0])**2 / self.center[0]**2) + ((j - self.center[1])**2 / self.center[1]**2) <= 1:
-                   self.shapeArr[i][j] = 1
-
-class Deformation(ShapeClass):
-    """
-    Deformation class -> loaded from file
-    """
-    def __init__(self, deformationFile, boundingBoxSize):
-        super(Deformation, self).__init__(boundingBoxSize)
-        self.shapeArr = np.zeros((boundingBoxSize[0], boundingBoxSize[1]))
-        deformationArr = rgb2gray(io.imread(deformationFile))
-        self.shapeArr = ShapeClass.resize(boundingBoxSize, deformationArr)
-        self.shapeArr = (self.shapeArr <= 0.9).astype(int)
-        pass
 
 class Synthesizer():
     """
@@ -489,7 +282,7 @@ class Synthesizer():
             if not isinstance(shapeObj, Rectangle):
                 newSize = (random.randint(1, maxSize), random.randint(1, maxSize))
                 newObj = copy.deepcopy(shapeObj)
-                newObj.resize(newSize)
+                newObj.resize(, newSize
                 if self.bumps < np.random.uniform(0,1):
                     filter = syn.createFilter(np.random.uniform(0, 3))
                     self.addFilter(filter, newObj.shapeArr, noZero=True)
@@ -561,7 +354,7 @@ class Synthesizer():
             crop['E'] = cropCoord
             crop['S'] = resNew - cropCoord
         image = image[crop['S']:crop['E'], crop['S']:crop['E']]
-        image = ShapeClass.resize((resolution, resolution), image)
+        image = ShapeClass.resize(image, (resolution, resolution))
         #self.saveImg(image, 'img_notDilates.jpg')
         return image
 
@@ -573,56 +366,56 @@ class Synthesizer():
         objects = []
 
         for i in range(1,5):
-            barrel = Barrel((50,50))
+            barrel = Barrel((50, 50))
             barrel.invert()
             barrel.doNotResize = True
             objects.append(barrel)
 
         for i in range(1,12):
             for j in range(0,4):
-                deform = Deformation(os.path.join('deformations','deformation' + str(i) + '.jpg'), (100,100))
+                deform = Deformation(os.path.join('deformations', 'deformation' + str(i) + '.jpg'), (100, 100))
                 if j != 0:
                     deform.createPyramid(j)
                 if random.uniform(0,1) < 0.5:
                     deform.rotate(45)
                 objects.append(deform)
 
-        barrel2 = Barrel((100,100))
+        barrel2 = Barrel((100, 100))
         barrel2.invert()
-        barrel2.mergeObjects(Barrel((50,50)))
+        barrel2.mergeObjects(Barrel((50, 50)))
         objects.append(barrel2)
 
         barrel2 = Barrel((100, 100))
         barrel2.mergeObjects(Barrel((50, 50)), True)
         objects.append(barrel2)
 
-        objects.append(Bubble((100,100)))
+        objects.append(Bubble((100, 100)))
 
-        bubble2 = Bubble((100,100))
+        bubble2 = Bubble((100, 100))
         bubble2.invert()
-        bubble2.mergeObjects(Bubble((50,50)), True)
+        bubble2.mergeObjects(Bubble((50, 50)), True)
         objects.append(bubble2)
 
-        bubble3 = Bubble((100,100))
+        bubble3 = Bubble((100, 100))
         objects.append(bubble3)
 
 
-        line = Rectangle((100,3))
+        line = Rectangle((100, 3))
         line.rotate(15)
         objects.append(line)
 
-        line = Rectangle((100,2))
+        line = Rectangle((100, 2))
         line.rotate(45)
         objects.append(line)
-        rectangle = Rectangle((512,50))
+        rectangle = Rectangle((512, 50))
         rectangle.rotateHeight(20,20)
         objects.append(rectangle)
 
-        rectangle = Rectangle((100,100))
-        rectangle.mergeObjects(Bubble((50,50)))
+        rectangle = Rectangle((100, 100))
+        rectangle.mergeObjects(Bubble((50, 50)))
         objects.append(rectangle)
 
-        rectangle = Rectangle((100,100))
+        rectangle = Rectangle((100, 100))
         rectangle.createPyramid(3)
         rectangle.shapeArr += 1
         objects.append(rectangle)
@@ -750,7 +543,7 @@ class Synthesizer():
             for channel in keys:
                 data = np.reshape(channels[channel]['data'],
                                                          (channels[channel]['xres'], channels[channel]['yres']))
-                kernel = ShapeClass.normalize(ShapeClass.resize((size, size), data))
+                kernel = ShapeClass.normalize(ShapeClass.resize(data, (size, size)))
                 kernel = Synthesizer.normalize(kernel)
                 kernels.append(kernel)
         return kernels
@@ -1085,7 +878,7 @@ class Synthesizer():
         fileNames = [f for f in os.listdir(self.pathToBackgrounds) if os.path.isfile(os.path.join(self.pathToBackgrounds, f))]
         for imagePath in fileNames:
             bckg = imageio.imread(os.path.join(self.pathToBackgrounds,imagePath))
-            bckg = self.normalize(np.asarray(ShapeClass.resize((self.resolution,self.resolution), bckg)))
+            bckg = self.normalize(np.asarray(ShapeClass.resize(bckg, (self.resolution, self.resolution))))
             self.backgrounds.append(bckg)
 
     def generateData(self):
@@ -1191,7 +984,7 @@ class Synthesizer():
         flags = [8,9,10]
         for i in range(5,11):
             for j in range(0,2):
-                deform = Deformation(os.path.join('deformations','deformation' + str(i) + '.jpg'), (200,200))
+                deform = Deformation(os.path.join('deformations', 'deformation' + str(i) + '.jpg'), (200, 200))
                 if random.uniform(0,1) < 0.5:
                     deform.createPyramid(7)
                 objects.append(deform)
@@ -1223,7 +1016,7 @@ class Synthesizer():
         images = []
         for flag in flags:
             for f in range(1,5):
-                img = Rectangle((1024,1024))
+                img = Rectangle((1024, 1024))
                 img.shapeArr = image
                 img.rotate((f-1)*31)
                 images.append(img.shapeArr)
