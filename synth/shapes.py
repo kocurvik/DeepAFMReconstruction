@@ -4,8 +4,6 @@ import random
 import cv2
 import numpy as np
 from scipy import ndimage
-from skimage import transform, io
-from skimage.color import rgb2gray
 
 from synth.imageSynthesizer import Synthesizer, params
 
@@ -34,7 +32,7 @@ class ShapeClass():
         self.doNotResize = False
 
     def scaleHeight(self, factor):
-        self.shapeArr = self.shapeArr * factor
+        self.shapeArr *= factor
 
     def createPyramid(self, iterations):
         """
@@ -43,14 +41,12 @@ class ShapeClass():
         :return: changes shapeArr
         """
         center = (self.x // 2, self.y // 2)
-        #tanX = math.tan(deg * math.pi / 180)
-        #incX = (tanX * center[0]) / iterations
 
         resizeParams = (center[0] // iterations, center[1] // iterations)
         resizedArray = self.shapeArr
         x = self.x
         y = self.y
-        for i in range(0, iterations):
+        for i in range(iterations):
             x = x - resizeParams[0]
             y = y - resizeParams[1]
             resizedArray = ShapeClass.resize(resizedArray, (x, y))
@@ -69,7 +65,7 @@ class ShapeClass():
     def resize_inst(self, newSize):
         self.x = newSize[0]
         self.y = newSize[1]
-        self.shapeArr = transform.resize(self.shapeArr, newSize, preserve_range=True)
+        self.shapeArr = ShapeClass.resize(self.shapeArr, newSize)
 
     def rotate(self, deg):
         self.shapeArr = ndimage.rotate(self.shapeArr, deg, reshape=True)
@@ -141,21 +137,19 @@ class ShapeClass():
             r = int((self.x - shapeObjMerge.x) / 2)
             s = int((self.y - shapeObjMerge.y) / 2)
             if inverse:
-                shapeObjMerge.shapeArr *= (-1)
-            for i in range(0, shapeObjMerge.x):
-                for j in range(0, shapeObjMerge.y):
-                    self.shapeArr[i + r][j + s] += shapeObjMerge.shapeArr[i][j]
+                self.shapeArr[r:r + shapeObjMerge.x, s:s + shapeObjMerge.y] -= shapeObjMerge.shapeArr
+            else:
+                self.shapeArr[r:r + shapeObjMerge.x, s:s + shapeObjMerge.y] += shapeObjMerge.shapeArr
+
         else:
             x = np.shape(shapeObjMerge)[0]
             y = np.shape(shapeObjMerge)[1]
             r = int((self.x - x) / 2)
-            s = r = int((self.y - y) / 2)
+            s = int((self.y - y) / 2)
             if inverse:
-                shapeObjMerge *= (-1)
-            for i in range(0, x):
-                for j in range(0, y):
-                    self.shapeArr[i + r][j + s] += shapeObjMerge[i][j]
-        #self.normalize_inst()
+                self.shapeArr[r:r + x, s:s + y] -= shapeObjMerge
+            else:
+                self.shapeArr[r:r + x, s:s + y] += shapeObjMerge
 
 
 class Bubble(ShapeClass):
@@ -204,8 +198,6 @@ class Deformation(ShapeClass):
     """
     def __init__(self, deformationFile, boundingBoxSize):
         super(Deformation, self).__init__(boundingBoxSize)
-        self.shapeArr = np.zeros((boundingBoxSize[0], boundingBoxSize[1]))
         deformationArr = read_gray(deformationFile)
         self.shapeArr = ShapeClass.resize(deformationArr, boundingBoxSize)
         self.shapeArr = 1 * (self.shapeArr <= 0.9)
-        pass

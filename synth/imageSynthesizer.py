@@ -5,17 +5,21 @@ Usage:
     syn = Synthesizer(params)
     syn.generateData()
 """
+import matplotlib.pyplot as plt
+import numpy as np
 import math
+import cv2
 from scipy.ndimage import gaussian_filter
+from scipy import ndimage
 import imageio
-# from DataManipulator import DataManipulator
+import pickle
+import random
 import gwyfile
-from PIL import ImageFilter
+import os
+from PIL import Image, ImageFilter
 import copy
-
-# from Registration import Registration, defaultParams
-from synth.shapes import ShapeClass, Bubble, Rectangle, Barrel, Deformation
-from SEMSim import *
+from synth.SEMSim import SEMSimulator
+from synth.shapes import ShapeClass, Barrel, Bubble, Rectangle, Deformation
 
 # params used for SEM simulation
 paramsSEMSim = {
@@ -282,7 +286,7 @@ class Synthesizer():
             if not isinstance(shapeObj, Rectangle):
                 newSize = (random.randint(1, maxSize), random.randint(1, maxSize))
                 newObj = copy.deepcopy(shapeObj)
-                newObj.resize(, newSize
+                newObj.resize(newSize)
                 if self.bumps < np.random.uniform(0,1):
                     filter = syn.createFilter(np.random.uniform(0, 3))
                     self.addFilter(filter, newObj.shapeArr, noZero=True)
@@ -354,7 +358,7 @@ class Synthesizer():
             crop['E'] = cropCoord
             crop['S'] = resNew - cropCoord
         image = image[crop['S']:crop['E'], crop['S']:crop['E']]
-        image = ShapeClass.resize(image, (resolution, resolution))
+        image = ShapeClass.resize((resolution, resolution), image)
         #self.saveImg(image, 'img_notDilates.jpg')
         return image
 
@@ -366,56 +370,56 @@ class Synthesizer():
         objects = []
 
         for i in range(1,5):
-            barrel = Barrel((50, 50))
+            barrel = Barrel((50,50))
             barrel.invert()
             barrel.doNotResize = True
             objects.append(barrel)
 
         for i in range(1,12):
             for j in range(0,4):
-                deform = Deformation(os.path.join('deformations', 'deformation' + str(i) + '.jpg'), (100, 100))
+                deform = Deformation(os.path.join('deformations','deformation' + str(i) + '.jpg'), (100,100))
                 if j != 0:
                     deform.createPyramid(j)
                 if random.uniform(0,1) < 0.5:
                     deform.rotate(45)
                 objects.append(deform)
 
-        barrel2 = Barrel((100, 100))
+        barrel2 = Barrel((100,100))
         barrel2.invert()
-        barrel2.mergeObjects(Barrel((50, 50)))
+        barrel2.mergeObjects(Barrel((50,50)))
         objects.append(barrel2)
 
         barrel2 = Barrel((100, 100))
         barrel2.mergeObjects(Barrel((50, 50)), True)
         objects.append(barrel2)
 
-        objects.append(Bubble((100, 100)))
+        objects.append(Bubble((100,100)))
 
-        bubble2 = Bubble((100, 100))
+        bubble2 = Bubble((100,100))
         bubble2.invert()
-        bubble2.mergeObjects(Bubble((50, 50)), True)
+        bubble2.mergeObjects(Bubble((50,50)), True)
         objects.append(bubble2)
 
-        bubble3 = Bubble((100, 100))
+        bubble3 = Bubble((100,100))
         objects.append(bubble3)
 
 
-        line = Rectangle((100, 3))
+        line = Rectangle((100,3))
         line.rotate(15)
         objects.append(line)
 
-        line = Rectangle((100, 2))
+        line = Rectangle((100,2))
         line.rotate(45)
         objects.append(line)
-        rectangle = Rectangle((512, 50))
+        rectangle = Rectangle((512,50))
         rectangle.rotateHeight(20,20)
         objects.append(rectangle)
 
-        rectangle = Rectangle((100, 100))
-        rectangle.mergeObjects(Bubble((50, 50)))
+        rectangle = Rectangle((100,100))
+        rectangle.mergeObjects(Bubble((50,50)))
         objects.append(rectangle)
 
-        rectangle = Rectangle((100, 100))
+        rectangle = Rectangle((100,100))
         rectangle.createPyramid(3)
         rectangle.shapeArr += 1
         objects.append(rectangle)
@@ -543,7 +547,7 @@ class Synthesizer():
             for channel in keys:
                 data = np.reshape(channels[channel]['data'],
                                                          (channels[channel]['xres'], channels[channel]['yres']))
-                kernel = ShapeClass.normalize(ShapeClass.resize(data, (size, size)))
+                kernel = ShapeClass.normalize(ShapeClass.resize((size, size), data))
                 kernel = Synthesizer.normalize(kernel)
                 kernels.append(kernel)
         return kernels
@@ -878,7 +882,7 @@ class Synthesizer():
         fileNames = [f for f in os.listdir(self.pathToBackgrounds) if os.path.isfile(os.path.join(self.pathToBackgrounds, f))]
         for imagePath in fileNames:
             bckg = imageio.imread(os.path.join(self.pathToBackgrounds,imagePath))
-            bckg = self.normalize(np.asarray(ShapeClass.resize(bckg, (self.resolution, self.resolution))))
+            bckg = self.normalize(np.asarray(ShapeClass.resize((self.resolution,self.resolution), bckg)))
             self.backgrounds.append(bckg)
 
     def generateData(self):
@@ -984,7 +988,7 @@ class Synthesizer():
         flags = [8,9,10]
         for i in range(5,11):
             for j in range(0,2):
-                deform = Deformation(os.path.join('deformations', 'deformation' + str(i) + '.jpg'), (200, 200))
+                deform = Deformation(os.path.join('deformations','deformation' + str(i) + '.jpg'), (200,200))
                 if random.uniform(0,1) < 0.5:
                     deform.createPyramid(7)
                 objects.append(deform)
@@ -1016,7 +1020,7 @@ class Synthesizer():
         images = []
         for flag in flags:
             for f in range(1,5):
-                img = Rectangle((1024, 1024))
+                img = Rectangle((1024,1024))
                 img.shapeArr = image
                 img.rotate((f-1)*31)
                 images.append(img.shapeArr)
