@@ -10,7 +10,6 @@ import os
 from network.dataset import Dataset
 from torch.utils.data import DataLoader
 
-from network.model import ResUnetModel
 from network.unet import ResUnetPlusPlus, ResUnet
 
 
@@ -54,66 +53,63 @@ def train(args):
     val_dataset = Dataset(args.path, 'val', preload=not args.no_preload)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
-    model = ResUnetModel()
-    trainer = pl.Trainer(max_epochs=10, gpus=1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    trainer.fit(model, train_loader, val_loader)
+    loss_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
 
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    #
-    # loss_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
-    #
-    # l2_loss = torch.nn.MSELoss()
-    #
-    # start_epoch = 0 if args.resume is None else args.resume
-    # print("Starting at epoch {}".format(start_epoch))
-    # print("Running till epoch {}".format(args.epochs))
-    #
-    #
-    # for e in range(start_epoch, args.epochs):
-    #     print("Starting epoch: ", e)
-    #     epoch_start_time = time.time()
-    #     for i, sample in enumerate(train_loader):
-    #         pred = model(sample['input'].cuda())[:, 0, :, :]
-    #         optimizer.zero_grad()
-    #
-    #         loss = l2_loss(pred, sample['gt'].cuda())
-    #         loss_running = 0.9 * loss_running + 0.1 * loss
-    #
-    #         remaining_time = (time.time() - epoch_start_time) / (i + 1) * (len(train_loader) - i)
-    #
-    #         if i % 10 == 0:
-    #             print("At step {}/{} - epoch eta: {} - running loss: {}".format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), loss_running.item()))
-    #
-    #         optimizer.zero_grad()
-    #         loss.backward()
-    #         optimizer.step()
-    #
-    #     print("At step {}/{} - running loss: {}".format(i, len(train_loader), loss_running.item()))
-    #
-    #     with torch.no_grad():
-    #         val_losses = []
-    #
-    #         # val_angles = []
-    #         # val_magnitudes = []
-    #
-    #         for sample in val_loader:
-    #             pred = model(sample['input'].cuda())[:, 0, :, :]
-    #             optimizer.zero_grad()
-    #
-    #             loss = l2_loss(pred, sample['gt'].cuda())
-    #
-    #             val_losses.append(loss.item())
-    #
-    #         print(20 * "*")
-    #         print("Epoch {}/{}".format(e, args.epochs))
-    #         print("val loss: {}".format(np.mean(val_losses)))
-    #
-    #     if args.dump_every != 0 and (e) % args.dump_every == 0:
-    #         print("Saving checkpoint")
-    #         if not os.path.isdir('checkpoints/'):
-    #             os.mkdir('checkpoints/')
-    #         torch.save(model.state_dict(), 'checkpoints/{:03d}.pth'.format(e))
+    l2_loss = torch.nn.MSELoss()
+
+    start_epoch = 0 if args.resume is None else args.resume
+
+
+    print("Starting at epoch {}".format(start_epoch))
+    print("Running till epoch {}".format(args.epochs))
+
+
+    for e in range(start_epoch, args.epochs):
+        print("Starting epoch: ", e)
+        epoch_start_time = time.time()
+        for i, sample in enumerate(train_loader):
+            pred = model(sample['input'].cuda())[:, 0, :, :]
+            optimizer.zero_grad()
+
+            loss = l2_loss(pred, sample['gt'].cuda())
+            loss_running = 0.9 * loss_running + 0.1 * loss
+
+            remaining_time = (time.time() - epoch_start_time) / (i + 1) * (len(train_loader) - i)
+
+            if i % 10 == 0:
+                print("At step {}/{} - epoch eta: {} - running loss: {}".format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), loss_running.item()))
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        print("At step {}/{} - running loss: {}".format(i, len(train_loader), loss_running.item()))
+
+        with torch.no_grad():
+            val_losses = []
+
+            # val_angles = []
+            # val_magnitudes = []
+
+            for sample in val_loader:
+                pred = model(sample['input'].cuda())[:, 0, :, :]
+                optimizer.zero_grad()
+
+                loss = l2_loss(pred, sample['gt'].cuda())
+
+                val_losses.append(loss.item())
+
+            print(20 * "*")
+            print("Epoch {}/{}".format(e, args.epochs))
+            print("val loss: {}".format(np.mean(val_losses)))
+
+        if args.dump_every != 0 and (e) % args.dump_every == 0:
+            print("Saving checkpoint")
+            if not os.path.isdir('checkpoints/'):
+                os.mkdir('checkpoints/')
+            torch.save(model.state_dict(), 'checkpoints/{:03d}.pth'.format(e))
 
 
 if __name__ == '__main__':
