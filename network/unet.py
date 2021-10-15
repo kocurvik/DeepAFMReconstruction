@@ -5,6 +5,7 @@ import torch
 
 from network.unet_modules import ResidualConv, ASPP, AttentionBlock, Upsample_, Squeeze_Excite_Block, Upsample
 
+
 class ResUnet(nn.Module):
     def __init__(self, channel, filters=[64, 128, 256, 512]):
         super(ResUnet, self).__init__()

@@ -1093,8 +1093,8 @@ paramsSyn = {
     "bumps" : 0.1 # percentage of bumps added
 }
 
-syn = Synthesizer(paramsSyn)
-syn.generateData()
+# syn = Synthesizer(paramsSyn)
+# syn.generateData()
 
 # syn.createStatsData()
 #ss = SEMSimulator(paramsSEMSim)

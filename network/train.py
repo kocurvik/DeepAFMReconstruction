@@ -59,7 +59,7 @@ def train(args):
 
     l2_loss = torch.nn.MSELoss()
 
-    start_epoch = 0 if args.resume is None else args.resume
+    start_epoch = 0 if args.resume is None else args.resume + 1
 
 
     print("Starting at epoch {}".format(start_epoch))

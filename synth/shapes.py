@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from scipy import ndimage
 
-from synth.imageSynthesizer import Synthesizer, params
+# from synth.imageSynthesizer import Synthesizer, params
 
 
 def read_gray(deformation_file):
@@ -99,16 +99,16 @@ class ShapeClass():
         image += mask
         return image
 
-    def addBumps(self):
-        """
-        Add bumps to shapeArr
-        :return:
-        """
-        syn = Synthesizer()
-        syn.setParameters(params)
-        filter = syn.createFilter(1)
-        syn.addFilter(filter, self.shapeArr, noZero=True)
-        self.shapeArr = Synthesizer.dilate(self.shapeArr, self.createGaussKernels(5, 1)[0])
+    # def addBumps(self):
+    #     """
+    #     Add bumps to shapeArr
+    #     :return:
+    #     """
+    #     syn = Synthesizer()
+    #     syn.setParameters(params)
+    #     filter = syn.createFilter(1)
+    #     syn.addFilter(filter, self.shapeArr, noZero=True)
+    #     self.shapeArr = Synthesizer.dilate(self.shapeArr, self.createGaussKernels(5, 1)[0])
 
     def rotateHeight(self, degX, degY):
         """

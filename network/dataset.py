@@ -6,6 +6,18 @@ import torch
 from torch.utils.data import DataLoader
 
 
+def prepare_model_input(img_l, img_r):
+    min_height = (min(img_l.shape[0], img_r.shape[0]) // 8) * 8
+    min_width = (min(img_l.shape[1], img_r.shape[1]) // 8) * 8
+
+    img_l = img_l[:min_height, :min_width]
+    img_r = img_r[:min_height, :min_width]
+
+    img_l_torch = torch.from_numpy(img_l)
+    img_r_torch = torch.from_numpy(img_r)
+
+    return torch.stack([img_l_torch, img_r_torch], dim=0)[None, ...], img_l, img_r
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, path, split, preload=True):
         self.dataset_dir = os.path.dirname(path)
