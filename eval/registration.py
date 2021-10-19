@@ -87,8 +87,8 @@ def register_affine_sitk(img_1, img_2, interpolator='linear', metric='mse', nOfB
     init_transform = sitk.Euler2DTransform()
 
     reg_init = sitk.ImageRegistrationMethod()
-    reg_init.SetOptimizerAsExhaustive([12 // 2, 0, 0])
-    reg_init.SetOptimizerScales([2.0 * np.pi / 12, 1.0, 1.0])
+    reg_init.SetOptimizerAsExhaustive([32 // 2, 0, 0])
+    reg_init.SetOptimizerScales([2.0 * np.pi / 32, 1.0, 1.0])
 
     reg_init.SetInitialTransform(sitk.CenteredTransformInitializer(img_1, img_2, init_transform))
     reg_init.SetInterpolator(sitk.sitkLinear)
