@@ -20,7 +20,7 @@ def parse_command_line():
     parser.add_argument('-r', '--resume', type=int, default=None, help='checkpoint to resume from')
     parser.add_argument('-nw', '--workers', type=int, default=0, help='workers')
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
-    parser.add_argument('--no_preload', action='store_true', default=False)
+    # parser.add_argument('--no_preload', action='store_true', default=False)
     parser.add_argument('-e', '--epochs', type=int, default=250, help='max number of epochs')
     parser.add_argument('-g', '--gpu', type=str, default='0', help='which gpu to use')
     parser.add_argument('-de', '--dump_every', type=int, default=0, help='save every n frames during extraction scripts')
@@ -47,10 +47,10 @@ def load_model(args):
 def train(args):
     model = load_model(args)
 
-    train_dataset = Dataset(args.path, 'train', preload=not args.no_preload)
+    train_dataset = Dataset(args.path, 'train')
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
-    val_dataset = Dataset(args.path, 'val', preload=not args.no_preload)
+    val_dataset = Dataset(args.path, 'val')
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
@@ -78,7 +78,7 @@ def train(args):
 
             remaining_time = (time.time() - epoch_start_time) / (i + 1) * (len(train_loader) - i)
 
-            if i % 10 == 0:
+            if i % 100 == 0:
                 print("At step {}/{} - epoch eta: {} - running loss: {}".format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), loss_running.item()))
 
             optimizer.zero_grad()
@@ -104,6 +104,7 @@ def train(args):
             print(20 * "*")
             print("Epoch {}/{}".format(e, args.epochs))
             print("val loss: {}".format(np.mean(val_losses)))
+            print(20 * "*")
 
         if args.dump_every != 0 and (e) % args.dump_every == 0:
             print("Saving checkpoint")
