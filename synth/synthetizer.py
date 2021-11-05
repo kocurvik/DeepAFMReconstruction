@@ -1,6 +1,12 @@
-# DO NOT IMPORT TORCH AS THIS COMMITS TOO MUCH MEMORY -> MP WILL GENERATE TOO MUCH AS WELL!!!
-
+# !!! Do not import torch here or in any subimpots!
+# This commits too much memory even without using and mp version then runs out of RAM very quickly!
+# For details see https://stackoverflow.com/questions/64837376/how-to-efficiently-run-multiple-pytorch-processes-models-at-once-traceback
+import json
+import os
 import time
+from datetime import datetime
+
+import git
 import numpy as np
 
 from synth.artifacts import dilate, apply_x_correlated_noise, grad_overshoot_markov, add_linear_skew, add_parabolic_skew
@@ -15,50 +21,47 @@ class Synthesizer():
     """
     Synthesizer class. For params description, see default params dict in the end of source file
     """
-    def __init__(self, out_path, tips_path, resolution=128, num_workers=0, save_every = None,
-                 linear_skew_sigma=0.2, parabolic_skew_sigma=0.2, skew_prob=0.5,
-                 noise_prob=0.9, noise_alpha_min=0.001, noise_alpha_max=0.01, noise_sigma_min=0.7, noise_sigma_max=0.8,
-                 overshoot_prob=0.8, max_overshoot_t=0.5, max_overshoot_mag=0.1, min_p_keep=0.1, max_p_keep=0.9,
-                 min_weaken_factor=0.5, max_weaken_factor=0.9):
 
-        self.out_path = out_path
+    def __init__(self, tips_path, **kwargs):
 
         self.tips = load_tips_from_pkl(tips_path)
         self.tips_keys = list(self.tips.keys())
 
         self.entries = []
-        self.num_workers = num_workers
 
-        self.resolution = resolution
+        default_params = {
+            'resolution': 128,
+            # skew params
+            'linear_skew_sigma': 0.2, 'parabolic_skew_sigma': 0.2, 'skew_prob': 0.5,
 
-        self.save_every = save_every
+            # overshoot params
+            'overshoot_prob': 0.8, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.1, 'min_p_keep': 0.1,
+            'max_p_keep': 0.9, 'min_weaken_factor': 0.5, 'max_weaken_factor': 0.9,
 
-        self.linear_skew_sigma = linear_skew_sigma
-        self.parabolic_skew_sigma = parabolic_skew_sigma
-        self.skew_prob = skew_prob
+            # x-correlated noise params
+            'noise_prob': 0.9, 'noise_alpha_min': 0.001, 'noise_alpha_max': 0.01, 'noise_sigma_min': 0.7,
+            'noise_sigma_max': 0.8,
 
-        self.noise_prob = noise_prob
-        self.noise_alpha_min = noise_alpha_min
-        self.noise_alpha_max = noise_alpha_max
-        self.noise_sigma_min = noise_sigma_min
-        self.noise_sigma_max = noise_sigma_max
+            # dilation params
+            'tip_scale_min': 0.5, 'tip_scale_max': 5.0}
 
-        self.overshoot_prob = overshoot_prob
-        self.max_overshoot_t = max_overshoot_t
-        self.max_overshoot_mag = max_overshoot_mag
-        self.min_p_keep = min_p_keep
-        self.max_p_keep = max_p_keep
-        self.min_weaken_factor = min_weaken_factor
-        self.max_weaken_factor = max_weaken_factor
+        # for hashing
+        self.param_names = sorted(list(default_params.keys()))
 
-        self.resolution = resolution
-        self.i = 0
+        for (prop, default) in default_params.items():
+            setattr(self, prop, kwargs.get(prop, default))
+
+    def get_param_dict(self):
+        return {param_name: getattr(self, param_name) for param_name in self.param_names}
+
+    def __hash__(self):
+        return hash(json.dumps({param_name: getattr(self, param_name) for param_name in self.param_names}, sort_keys=True))
 
     def get_random_tip(self):
         tip = np.random.choice(self.tips_keys)
         rot = np.random.randint(0, 3)
         tip_scaled = normalize(self.tips[tip]['data'])
-        scale = np.random.uniform(0.5, 5.0)
+        scale = np.random.uniform(self.tip_scale_min, self.tip_scale_max)
         tip_scaled *= scale
         for _ in range(0, rot):
             tip_scaled = np.rot90(tip_scaled)
@@ -83,7 +86,7 @@ class Synthesizer():
         return image
 
     def add_skew(self, image):
-        image = add_linear_skew(image, sigma_a=self.linear_skew_sigma,  sigma_b = self.linear_skew_sigma)
+        image = add_linear_skew(image, sigma_a=self.linear_skew_sigma, sigma_b=self.linear_skew_sigma)
         image = add_parabolic_skew(image, sigma_a=self.parabolic_skew_sigma, sigma_b=self.parabolic_skew_sigma)
         return image
 
@@ -113,16 +116,13 @@ class Synthesizer():
 
         return image_l, image_r
 
-    def save_np(self):
-        np.save(self.out_path, np.array(self.entries, dtype=np.float32))
+    # def save_np(self):
+    #     np.save(self.out_path, np.array(self.entries, dtype=np.float32))
 
     def generate_entries(self, n):
         for i in range(n):
             entry = self.generate_single_entry()
             self.entries.append(entry)
-            # if self.save_every is not None and i % self.save_every == 0:
-            #     print("Saving at index ", i)
-            #     self.save_np()
         return np.array(self.entries)
 
     def generate_single_entry(self):
@@ -132,41 +132,56 @@ class Synthesizer():
         entry = np.stack([image_l, image_r, image], axis=0).astype(np.float32)
         return entry
 
-# class ProcessSynthetizer(Process):
-#     def __init__(self, queue, num_items, synthetizer):
-#         super(ProcessSynthetizer, self).__init__()
-#         self.queue = queue
-#         self.num_items = num_items
-#         self.synthetizer = synthetizer
-#
-#     def run(self):
-#         for _ in range(self.num_items):
-#             entry = self.synthetizer.generate_single_entry()
-#             self.queue.put(entry)
+
+def generate_dataset(synthetizer, num_items, num_workers=8):
+    if num_workers > 1:
+        pool = Pool(num_workers)
+        num_per_worker = [num_items // num_workers + (num_items % num_workers > i) for i in range(num_workers)]
+        print("Workers will generate ", num_per_worker, "items")
+        entries = pool.map(synthetizer.generate_entries, num_per_worker)
+        entries = np.concatenate(entries, axis=0)
+        return entries
+    else:
+        print("Single worker will generete {} items".format(num_items))
+        entries = synthetizer.generate_entries(num_items)
+        return entries
 
 
-def run_mp(synthetizer, num_items, num_workers=8):
-    pool = Pool(num_workers)
-    num_per_worker = [num_items // num_workers + (num_items % num_workers > i) for i in range(num_workers)]
-    print("Workers will generate ", num_per_worker , "items")
-    entries = pool.map(synthetizer.generate_entries, num_per_worker)
-    entries = np.concatenate(entries, axis=0)
-    return entries
+def save_dataset(synthetizer, entries, dir_path, subset):
+    hash_path = os.path.join(dir_path, str(abs(hash(synthetizer))))
+
+    if not os.path.isdir(hash_path):
+        os.mkdir(hash_path)
+
+    json_path = os.path.join(dir_path, hash_path, '{}.json'.format(subset))
+    npy_path = os.path.join(dir_path, hash_path, '{}.npy'.format(subset))
+
+    param_dict = synthetizer.get_param_dict()
+    repo = git.Repo(search_parent_directories=True)
+
+    json_dict = {'date': datetime.today().strftime('%Y-%m-%d-%H:%M:%S'), 'num_items': len(entries),
+                 'synthetizer_params': param_dict, 'git_hash': repo.head.object.hexsha}
+
+    np.save(npy_path, entries)
+
+    with open(json_path, 'w') as f:
+        json.dump(json_dict, f, sort_keys=True, indent=4)
+
 
 if __name__ == '__main__':
     tip_pkl_path = 'D:/Research/data/GEFSEM/synth/res/tips.pkl'
-    train_path = 'D:/Research/data/GEFSEM/synth/generated/train.npy'
-    val_path = 'D:/Research/data/GEFSEM/synth/generated/val.npy'
+    out_path = 'D:/Research/data/GEFSEM/synth/generated/'
+
+    syn = Synthesizer(tip_pkl_path)
+    entries = generate_dataset(syn, num_items=4000, num_workers=8)
+    save_dataset(syn, entries, out_path, 'train')
+
+    entries = generate_dataset(syn, num_items=1000, num_workers=8)
+    save_dataset(syn, entries, out_path, 'val')
 
     # for num_workers in range(0, 17, 4):
-    for num_workers in range(0, 17, 4):
-        start_time = time.time()
-        syn = Synthesizer(val_path, tip_pkl_path, num_workers=num_workers)
-        run_mp(syn, 3000, num_workers)
-        print("For {} workers comp took {}".format(num_workers, time.time() - start_time))
-
-    # start_time = time.time()
-    # syn = Synthesizer(3000, val_path, tip_pkl_path, num_workers=num_workers)
-    # syn.generate_data()
-    # print("For {} workers comp took {}".format(num_workers, time.time() - start_time))
-
+    # for num_workers in range(0, 17, 4):
+    #     start_time = time.time()
+    #     syn = Synthesizer(tip_pkl_path, num_workers=num_workers)
+    #     generate_dataset(syn, 3000, num_workers)
+    #     print("For {} workers comp took {}".format(num_workers, time.time() - start_time))

@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-def generate_grid_structure(width=128, height=128):
 
-    canvas = np.zeros([height, width])
+def generate_grid_structure(width=128, height=128):
+    canvas = np.zeros([height, width], dtype=np.float32)
 
     y, x = np.mgrid[:height, :width]
 
