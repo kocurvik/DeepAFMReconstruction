@@ -1,27 +1,14 @@
-"""
-File contains classes and functions used for synthetic data generation and some AD HOC functions used for some experiments
-Data generation is controlled by parameters passed to init.
-Usage:
-    syn = Synthesizer(params)
-    syn.generateData()
-"""
+# DO NOT IMPORT TORCH AS THIS COMMITS TOO MUCH MEMORY -> MP WILL GENERATE TOO MUCH AS WELL!!!
+
 import time
-
-import matplotlib.pyplot as plt
 import numpy as np
-import cv2
-import random
-import os
-
-from tqdm import tqdm
 
 from synth.artifacts import dilate, apply_x_correlated_noise, grad_overshoot_markov, add_linear_skew, add_parabolic_skew
 from synth.generator import generate_grid_structure
 
-# params used for SEM simulation
 from utils.image import normalize, load_tips_from_pkl, normalize_joint
 
-from multiprocessing import Pool, Process, Queue
+from multiprocessing import Pool
 
 
 class Synthesizer():
