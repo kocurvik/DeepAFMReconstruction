@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
 if __name__ == '__main__':
     path = 'D:/Research/data/GEFSEM/synth/generated/'
     dataset = Dataset(path, 'test')
-    data_loader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=1)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
 
     for item in data_loader:
         cv2.imshow("L", item['input'][0, 0].numpy())

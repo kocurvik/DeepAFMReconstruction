@@ -1,9 +1,11 @@
 import os.path
+import pickle
 
 import cv2
 import numpy as np
 import gwyfile
-import torch
+from matplotlib import pyplot as plt
+from scipy import ndimage
 
 
 def normalize(img):
@@ -12,6 +14,20 @@ def normalize(img):
         return img
     else:
         return (img - np.min(img)) / (np.max(img) - np.min(img))
+
+
+def normalize_joint(img_l, img_r):
+    joint = np.stack([img_l, img_r], axis=0)
+    max = np.max(joint)
+    min = np.min(joint)
+
+    if max == min:
+        return img_l, img_r
+
+    img_l = (img_l - min) / (max - min)
+    img_r = (img_r - min) / (max - min)
+
+    return img_l, img_r
 
 
 def remove_offset_lr(img_l, img_r, max_offset=64):
@@ -48,8 +64,7 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
         img_l = np.rot90(img_l)
 
     if normalize_range:
-        img_l = normalize(img_l)
-        img_r = normalize(img_r)
+        img_l, img_r = normalize(np.stack([img_l, img_r], axis=0))
 
     if remove_offset:
         img_l, img_r = remove_offset_lr(img_l, img_r)
@@ -60,8 +75,44 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
     return img_l, img_r
 
 
-# if __name__ == '__main__':
-#     # img_l_td, img_r_td = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_t-d_0deg_60deg-scanner_210330_134900.gwy')
+def rotate(image, deg):
+    return ndimage.rotate(image, deg, reshape=True)
+
+
+def load_tips_from_pkl(pkl_path):
+    with open(pkl_path, 'rb') as f:
+        tips = pickle.load(f)
+        tips = tips[list(tips.keys())[0]]
+    return tips
+
+if __name__ == '__main__':
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_l-r_0deg_45deg-scanner_210326_153256.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1_b-u_0deg_0deg-scanner_210326_105247.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1_b-u_0deg_0deg-scanner_210326_105247.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-08-18 - Data FIT/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
+    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_t-d_0deg_60deg-scanner_210330_134900.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy', normalize_range=True)
+
+    for i in range(0, 512, 16):
+        print(i)
+        disp_l = np.copy(img_l)
+        disp_r = np.copy(img_r)
+
+        disp_l[i, :] = 0
+        disp_r[i, :] = 0
+
+        plt.clf()
+        plt.plot(img_l[i, :], c='r')
+        plt.plot(img_r[i, :], c='b')
+        # plt.plot(img_baseline[i, :], c='k')
+        plt.pause(0.1)
+
+        cv2.imshow("img_l_td", disp_l)
+        cv2.imshow("img_r_td", disp_r)
+        cv2.waitKey(0)
+
+
+
 #     # img_l_lr, img_r_lr = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_l-r_0deg_90deg-scanner_210330_132513.gwy')
 #     img_l_td, img_r_td = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_t-d_0deg_45deg-scanner_210326_151151.gwy')
 #     img_l_lr, img_r_lr = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_l-r_0deg_45deg-scanner_210326_153256.gwy')

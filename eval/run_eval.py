@@ -110,7 +110,7 @@ def eval_group(model, group_path):
 
 def extract_neno_eval_data(model, path):
     filenames = os.listdir(path)
-    filenames = [f for f in filenames if '.gwy' in f and 'tip' not in f and 'bad' not in f and 'Neno' not in f]
+    filenames = [f for f in filenames if '.gwy' in f and 'tip' not in f and 'bad' not in f]
 
     data_dict = {}
 
@@ -127,11 +127,11 @@ def extract_neno_eval_data(model, path):
         img_nn = np.squeeze(model(input.cuda()).detach().cpu().numpy())
         img_baseline = normalize(baseline_lr_filtering(img_l, img_r))
 
-        cv2.imshow('Img L', img_l)
-        cv2.imshow('Img R', img_r)
-        cv2.imshow('Img baseline', img_baseline)
-        cv2.imshow('Img NN', img_nn)
-        cv2.waitKey(0)
+        # cv2.imshow('Img L', img_l)
+        # cv2.imshow('Img R', img_r)
+        # cv2.imshow('Img baseline', img_baseline)
+        # cv2.imshow('Img NN', img_nn)
+        # cv2.waitKey(0)
 
         entry_dict = {'filename': filename, 'gwy_path': gwy_path, 'img_l': img_l, 'img_r': img_r, 'img_nn': img_nn, 'img_baseline': img_baseline}
 
