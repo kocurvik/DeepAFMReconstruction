@@ -35,7 +35,7 @@ class ResUnet(nn.Module):
         self.up_residual_conv3 = ResidualConv(filters[1] + filters[0], filters[0], 1, 1)
 
         self.output_layer = nn.Sequential(
-            nn.Conv2d(filters[0], 1, 1, 1),
+            nn.Conv2d(filters[0] + 2, 1, 1, 1),
             nn.Sigmoid(),
         )
 
@@ -62,7 +62,9 @@ class ResUnet(nn.Module):
 
         x10 = self.up_residual_conv3(x9)
 
-        output = self.output_layer(x10)
+        x11 = torch.cat([x10, x], dim=1)
+
+        output = self.output_layer(x11)
 
         return output
 
