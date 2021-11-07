@@ -17,8 +17,8 @@ def generate_grid_structure(width=128, height=128):
 
         # line_width = np.random.randint(1, height)
         # line_space = np.random.randint(1, width)
-        line_width = np.random.poisson(height)
-        line_space = np.random.poisson(height)
+        line_width = np.random.triangular(0, height * 2, 4 * height)
+        line_space = np.random.triangular(0, height * 2, 4 * height)
 
         angle = np.random.rand() * 2 * np.pi
         cos = np.cos(angle)
