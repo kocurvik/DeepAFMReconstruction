@@ -1,10 +1,12 @@
 # !!! Do not import torch here or in any subimpots!
 # This commits too much memory even without using and mp version then runs out of RAM very quickly!
 # For details see https://stackoverflow.com/questions/64837376/how-to-efficiently-run-multiple-pytorch-processes-models-at-once-traceback
+import argparse
 import json
 import os
 import time
 from datetime import datetime
+from hashlib import sha1
 
 import git
 import numpy as np
@@ -23,39 +25,45 @@ class Synthesizer():
     """
 
     def __init__(self, tips_path, **kwargs):
-
         self.tips = load_tips_from_pkl(tips_path)
         self.tips_keys = list(self.tips.keys())
 
         self.entries = []
 
-        default_params = {
-            'resolution': 128,
-            # skew params
-            'linear_skew_sigma': 0.2, 'parabolic_skew_sigma': 0.2, 'skew_prob': 0.5,
-
-            # overshoot params
-            'overshoot_prob': 0.8, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.1, 'min_p_keep': 0.1,
-            'max_p_keep': 0.9, 'min_weaken_factor': 0.5, 'max_weaken_factor': 0.9,
-
-            # x-correlated noise params
-            'noise_prob': 0.9, 'noise_alpha_min': 0.001, 'noise_alpha_max': 0.01, 'noise_sigma_min': 0.7,
-            'noise_sigma_max': 0.8,
-
-            # dilation params
-            'tip_scale_min': 0.5, 'tip_scale_max': 5.0}
-
+        default_params = self.get_default_param_dict()
         # for hashing
         self.param_names = sorted(list(default_params.keys()))
 
         for (prop, default) in default_params.items():
             setattr(self, prop, kwargs.get(prop, default))
 
+    @staticmethod
+    def get_default_param_dict():
+        default_params = {
+            'resolution': 128,
+            # skew params
+            'linear_skew_sigma': 0.2, 'parabolic_skew_sigma': 0.2, 'skew_prob': 0.5,
+
+            # overshoot params
+            'overshoot_prob': 0.6, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.1, 'min_p_keep': 0.0,
+            'max_p_keep': 0.7, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
+
+            # x-correlated noise params
+            'noise_prob': 0.9, 'noise_alpha_min': 0.5, 'noise_alpha_max': 0.95, 'noise_sigma_min': 0.0001,
+            'noise_sigma_max': 0.02,
+
+            # dilation params
+            'tip_scale_min': 1.0, 'tip_scale_max': 10.0}
+
+        return default_params
+
     def get_param_dict(self):
         return {param_name: getattr(self, param_name) for param_name in self.param_names}
 
-    def __hash__(self):
-        return hash(json.dumps({param_name: getattr(self, param_name) for param_name in self.param_names}, sort_keys=True))
+    def get_param_hash(self):
+        dict = {param_name: getattr(self, param_name) for param_name in self.param_names}
+        json_string = json.dumps(dict, sort_keys=True)
+        return sha1(json_string.encode('utf-8')).hexdigest()
 
     def get_random_tip(self):
         tip = np.random.choice(self.tips_keys)
@@ -116,9 +124,6 @@ class Synthesizer():
 
         return image_l, image_r
 
-    # def save_np(self):
-    #     np.save(self.out_path, np.array(self.entries, dtype=np.float32))
-
     def generate_entries(self, n):
         for i in range(n):
             entry = self.generate_single_entry()
@@ -128,8 +133,8 @@ class Synthesizer():
     def generate_single_entry(self):
         image = generate_grid_structure(self.resolution, self.resolution)
         image_l, image_r = self.apply_artifacts_and_noise(image)
-        image_l, image_r = normalize_joint(image_l, image_r)
-        entry = np.stack([image_l, image_r, image], axis=0).astype(np.float32)
+        images = normalize_joint([image_l, image_r, image])
+        entry = np.stack(images, axis=0).astype(np.float32)
         return entry
 
 
@@ -147,37 +152,57 @@ def generate_dataset(synthetizer, num_items, num_workers=8):
         return entries
 
 
-def save_dataset(synthetizer, entries, dir_path, subset):
-    hash_path = os.path.join(dir_path, str(abs(hash(synthetizer))))
+def save_dataset(synthetizer, entries, args):
+    hash_path = os.path.join(args.out_path, synthetizer.get_param_hash())
+
+    print('Hash path: ', hash_path)
 
     if not os.path.isdir(hash_path):
         os.mkdir(hash_path)
 
-    json_path = os.path.join(dir_path, hash_path, '{}.json'.format(subset))
-    npy_path = os.path.join(dir_path, hash_path, '{}.npy'.format(subset))
+    json_path = os.path.join(args.out_path, hash_path, '{}.json'.format(args.subset))
+    npy_path = os.path.join(args.out_path, hash_path, '{}.npy'.format(args.subset))
 
     param_dict = synthetizer.get_param_dict()
     repo = git.Repo(search_parent_directories=True)
 
     json_dict = {'date': datetime.today().strftime('%Y-%m-%d-%H:%M:%S'), 'num_items': len(entries),
-                 'synthetizer_params': param_dict, 'git_hash': repo.head.object.hexsha}
+                 'synthetizer_params': param_dict, 'git_hash': repo.head.object.hexsha, 'args': vars(args)}
 
     np.save(npy_path, entries)
+    print('Saved to ', npy_path)
 
     with open(json_path, 'w') as f:
         json.dump(json_dict, f, sort_keys=True, indent=4)
 
+    print('Saved to ', json_path)
+
+
+def parse_command_line():
+    """ Parser used for training and inference returns args. Sets up GPUs."""
+    parser = argparse.ArgumentParser()
+
+    default_params = Synthesizer.get_default_param_dict()
+
+    # add def synthetizer params
+    for k, v in default_params.items():
+        parser.add_argument('--{}'.format(k), type=float, default=v)
+
+    parser.add_argument('-n', '--num_items', type=int, default=1000)
+    parser.add_argument('-nw', '--num_workers', type=int, default=1)
+    parser.add_argument('-s', '--subset', type=str, default='train')
+    parser.add_argument('tips_path', type=str)
+    parser.add_argument('out_path', type=str)
+    args = parser.parse_args()
+    return args
+
 
 if __name__ == '__main__':
-    tip_pkl_path = 'D:/Research/data/GEFSEM/synth/res/tips.pkl'
-    out_path = 'D:/Research/data/GEFSEM/synth/generated/'
+    args = parse_command_line()
 
-    syn = Synthesizer(tip_pkl_path)
-    entries = generate_dataset(syn, num_items=4000, num_workers=8)
-    save_dataset(syn, entries, out_path, 'train')
-
-    entries = generate_dataset(syn, num_items=1000, num_workers=8)
-    save_dataset(syn, entries, out_path, 'val')
+    syn = Synthesizer(**vars(args))
+    entries = generate_dataset(syn, num_items=args.num_items, num_workers=args.num_workers)
+    save_dataset(syn, entries, args)
 
     # for num_workers in range(0, 17, 4):
     # for num_workers in range(0, 17, 4):

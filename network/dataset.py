@@ -32,8 +32,8 @@ class Dataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    path = 'D:/Research/data/GEFSEM/synth/generated/'
-    dataset = Dataset(path, 'test')
+    path = 'D:/Research/data/GEFSEM/synth/generated/15d1ecbd7134bbb22111e0b84bfe725f07b39a89/'
+    dataset = Dataset(path, 'train')
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
 
     for item in data_loader:

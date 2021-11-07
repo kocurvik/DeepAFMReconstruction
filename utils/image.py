@@ -16,18 +16,19 @@ def normalize(img):
         return (img - np.min(img)) / (np.max(img) - np.min(img))
 
 
-def normalize_joint(img_l, img_r):
-    joint = np.stack([img_l, img_r], axis=0)
+def normalize_joint(imgs):
+    joint = np.stack(imgs, axis=0)
     max = np.max(joint)
     min = np.min(joint)
 
     if max == min:
-        return img_l, img_r
+        return imgs
 
-    img_l = (img_l - min) / (max - min)
-    img_r = (img_r - min) / (max - min)
+    n_imgs = []
+    for img in imgs:
+        n_imgs.append((img - min) / (max - min))
 
-    return img_l, img_r
+    return n_imgs
 
 
 def remove_offset_lr(img_l, img_r, max_offset=64):

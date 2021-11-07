@@ -80,28 +80,27 @@ def command_iteration(method):
     print(f"{method.GetOptimizerIteration():3} = {method.GetMetricValue():7.5f} : {method.GetOptimizerPosition()}")
 
 
-def register_affine_sitk(img_1, img_2, interpolator='linear', metric='mse', nOfBins=50, MMISamplingPercentage=0.5, verbose=True):
+def register_rigid_sitk(img_1, img_2, interpolator='linear', metric='mse', p1=None, p2=None, nOfBins=50, MMISamplingPercentage=0.5, verbose=True):
     img_1 = sitk.GetImageFromArray(img_1)
     img_2 = sitk.GetImageFromArray(img_2)
 
-    init_transform = sitk.Euler2DTransform()
+    if p1 is not None and p2 is not None:
+        p1_list = [c for p in p1 for c in p]
+        p2_list = [c for p in p2 for c in p]
+        init_transform = sitk.LandmarkBasedTransformInitializer(sitk.Euler2DTransform(), p1_list, p2_list)
+        # init_transform = sitk.LandmarkBasedTransformInitializer(sitk.AffineTransform(2), p1_list, p2_list)
+    else:
+        init_transform = sitk.Euler2DTransform()
 
-    reg_init = sitk.ImageRegistrationMethod()
-    reg_init.SetOptimizerAsExhaustive([32 // 2, 0, 0])
-    reg_init.SetOptimizerScales([2.0 * np.pi / 32, 1.0, 1.0])
+        reg_init = sitk.ImageRegistrationMethod()
+        reg_init.SetOptimizerAsExhaustive([32 // 2, 0, 0])
+        reg_init.SetOptimizerScales([2.0 * np.pi / 32, 1.0, 1.0])
 
-    reg_init.SetInitialTransform(sitk.CenteredTransformInitializer(img_1, img_2, init_transform))
-    reg_init.SetInterpolator(sitk.sitkLinear)
-    if verbose:
-        reg_init.AddCommand(sitk.sitkIterationEvent, lambda: command_iteration(reg_init))
-    init_transform = reg_init.Execute(img_1, img_2)
-
-    # if init_matrix is not None:
-    #     init_transform.SetMatrix(init_matrix[:2, :2].ravel().astype(np.double).tolist())
-    #     init_transform.SetTranslation(init_matrix[:2, 2].astype(np.double).tolist())
-    # if verbose:
-    #     print(10 * '*' + ' Init with a transform ' + 10 * '*')
-    #     print(init_transform)
+        reg_init.SetInitialTransform(sitk.CenteredTransformInitializer(img_1, img_2, init_transform))
+        reg_init.SetInterpolator(sitk.sitkLinear)
+        if verbose:
+            reg_init.AddCommand(sitk.sitkIterationEvent, lambda: command_iteration(reg_init))
+        init_transform = reg_init.Execute(img_1, img_2)
 
     reg = sitk.ImageRegistrationMethod()
 

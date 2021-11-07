@@ -1,12 +1,13 @@
 import argparse
 import itertools
 import os
+import pickle
 
 import numpy as np
 import cv2
 import torch
 
-from eval.registration import register_affine_orb, register_affine_sitk, resample_images
+from eval.registration import register_affine_orb, register_rigid_sitk, resample_images
 from network.train import load_model
 from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy
 
@@ -48,10 +49,10 @@ def baseline_lr_filtering(img_1, img_2, threshold=0.01):
 
 
 
-def get_metric(img_1, img_2, metric='mse', display=None):
+def get_metric(img_1, img_2, metric='mse', p1=None, p2=None, display=None):
     # affine_matrix = register_affine_orb(img_1, img_2)
     # print(affine_matrix)
-    transform, metric_value = register_affine_sitk(img_1, img_2, metric=metric, verbose=False)
+    transform, metric_value = register_rigid_sitk(img_1, img_2, metric=metric, p1=p1, p2=p2, verbose=False)
 
     img_2_t, img_c = resample_images(img_1, img_2, transform)
 
@@ -108,47 +109,21 @@ def eval_group(model, group_path):
     generate_table(nn_imgs, baseline_imgs)
 
 
-def extract_neno_eval_data(model, path):
-    filenames = os.listdir(path)
-    filenames = [f for f in filenames if '.gwy' in f and 'tip' not in f and 'bad' not in f]
-
-    data_dict = {}
-
-    for filename in filenames:
-        prefix = filename.split('_')[0]
-
-        if prefix not in data_dict.keys():
-            data_dict[prefix] = []
-
-        gwy_path = os.path.join(path, filename)
-        img_l, img_r = load_lr_img_from_gwy(gwy_path)
-
-        input = torch.from_numpy(np.stack([img_l, img_r], axis=0)[np.newaxis, ...]).cuda()
-        img_nn = np.squeeze(model(input.cuda()).detach().cpu().numpy())
-        img_baseline = normalize(baseline_lr_filtering(img_l, img_r))
-
-        # cv2.imshow('Img L', img_l)
-        # cv2.imshow('Img R', img_r)
-        # cv2.imshow('Img baseline', img_baseline)
-        # cv2.imshow('Img NN', img_nn)
-        # cv2.waitKey(0)
-
-        entry_dict = {'filename': filename, 'gwy_path': gwy_path, 'img_l': img_l, 'img_r': img_r, 'img_nn': img_nn, 'img_baseline': img_baseline}
-
-        data_dict[prefix].append(entry_dict)
-
-    return data_dict
-
-
-def eval_same_sample(dict_list):
-    for idx_1, idx_2 in itertools.combinations(np.arange(len(dict_list)), 2):
-        print("Images: {} and {}".format(dict_list[idx_1]['filename'], dict_list[idx_2]['filename']))
-        for metric in ['mse', 'correlation', 'mmi']:
+def eval_same_sample(entries):
+    for idx_1, idx_2 in itertools.combinations(np.arange(len(entries)), 2):
+        print("Images: {} and {}".format(entries[idx_1]['filename'], entries[idx_2]['filename']))
+        # for metric in ['mse', 'correlation', 'mmi']:
+        for metric in ['mse']:
             print('\t Metric ', metric)
-            metric_value, reg_image_baseline = get_metric(dict_list[idx_1]['img_baseline'], dict_list[idx_2]['img_baseline'], metric=metric, display=None)
+
+            metric_value, reg_image_baseline = get_metric(entries[idx_1]['img_baseline'], entries[idx_2]['img_baseline'],
+                                                          p1=entries[idx_1]['registration_points'], p2=entries[idx_2]['registration_points'],
+                                                          metric=metric, display=None)
             print('\t \t Baseline: {}'.format(metric_value))
 
-            metric_value, reg_image_nn = get_metric(dict_list[idx_1]['img_nn'], dict_list[idx_2]['img_nn'], metric=metric, display=1)
+            metric_value, reg_image_nn = get_metric(entries[idx_1]['img_nn'], entries[idx_2]['img_nn'],
+                                                    p1=entries[idx_1]['registration_points'], p2=entries[idx_2]['registration_points'],
+                                                    metric=metric, display=1)
             print('\t \t NN: {}'.format(metric_value))
 
             # mosaic = np.concatenate([reg_image_baseline, reg_image_nn], axis=1)
@@ -157,12 +132,25 @@ def eval_same_sample(dict_list):
             # cv2.imwrite('vis/reg_{}_{}_{}.png'.format(metric, idx_1, idx_2), (255 * mosaic).astype(np.float32))
 
 
-def eval_neno(model, path):
-    data_dict = extract_neno_eval_data(model, path)
+def inference(model, entries):
+    for entry in entries:
+        img_l = entry['img_l']
+        img_r = entry['img_r']
+        input = torch.from_numpy(np.stack([img_l, img_r], axis=0)[np.newaxis, ...]).cuda()
+        img_nn = np.squeeze(model(input.cuda()).detach().cpu().numpy())
+        img_baseline = normalize(baseline_lr_filtering(img_l, img_r))
+        entry['img_nn'] = img_nn
+        entry['img_baseline'] = img_baseline
+    return entries
 
-    for prefix in data_dict.keys():
-        print(10 * '*' + ' Evaluating sample ' + prefix + ' ' + 10 * '*')
-        eval_same_sample(data_dict[prefix])
+
+def eval_neno(model, path):
+    print("Evaluating sample from path: ", path)
+
+    with open(path, 'rb') as f:
+        entries = pickle.load(f)
+    entries = inference(model, entries)
+    eval_same_sample(entries)
 
 
 if __name__ == '__main__':

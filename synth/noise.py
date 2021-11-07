@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from synth.shapes import create_bubble_array
+from synthetizer.shapes import create_bubble_array
 from utils.image import normalize
 
 
