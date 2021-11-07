@@ -49,8 +49,8 @@ class Synthesizer():
             'max_p_keep': 0.7, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
             # x-correlated noise params
-            'noise_prob': 0.9, 'noise_alpha_min': 0.5, 'noise_alpha_max': 0.95, 'noise_sigma_min': 0.0001,
-            'noise_sigma_max': 0.02,
+            'noise_prob': 0.9, 'noise_alpha_min': 0.05, 'noise_alpha_max': 0.95, 'noise_sigma_min': 0.0001,
+            'noise_sigma_max': 0.05,
 
             # dilation params
             'tip_scale_min': 1.0, 'tip_scale_max': 10.0}
@@ -77,13 +77,6 @@ class Synthesizer():
         return tip_scaled
 
     def add_overshoot(self, image, flip=False):
-        t = np.random.uniform(0, 0.5)
-        mag = np.random.uniform(0, 0.1)
-        p_keep = np.random.uniform(0.1, 0.95)
-        p_weaken = np.random.uniform(0.0, 1 - p_keep - 0.05)
-        weaken_factor = np.random.uniform(0.5, 0.9)
-        image = grad_overshoot_markov(image, t, mag, p_keep, p_weaken, weaken_factor, flip=flip)
-
         t = np.random.uniform(0, self.max_overshoot_t)
         mag = np.random.uniform(0, self.max_overshoot_mag)
         p_keep = np.random.uniform(self.min_p_keep, self.max_p_keep)
