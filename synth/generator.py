@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 def generate_grid_structure(width=128, height=128):
     canvas = np.zeros([4 * height, 4 * width], dtype=np.float32)
 
-    y, x = np.mgrid[:4 * height, :4 * width]
+    y, x = np.mgrid[:4 * height, :4 * width].astype(np.float32)
 
     # shift randomly
     y -= np.random.uniform(0, 4*height)
