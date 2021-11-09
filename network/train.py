@@ -27,6 +27,8 @@ def parse_command_line():
     parser.add_argument('-exp', type=int, default=0, help='number of experiment')
     parser.add_argument('-expr', type=int, default=0, help='number of experiment to resume from')
     parser.add_argument('-g', '--gpu', type=str, default='0', help='which gpu to use')
+    parser.add_argument('-o', '--opt', type=str, default='sgd', help='optimizer to use: adam or sgd')
+    parser.add_argument('-wd', '--weight_decay', type=float, default=0.0, help='weight decay to use during training')
     parser.add_argument('-de', '--dump_every', type=int, default=0, help='save every n frames during extraction scripts')
     parser.add_argument('path')
     args = parser.parse_args()
@@ -63,7 +65,12 @@ def train(args):
     val_dataset = Dataset(args.path, 'val')
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    if args.opt == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    elif args.opt == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
 
     train_loss_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
 

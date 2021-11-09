@@ -1,4 +1,4 @@
-# models from https://github.com/rishikksh20/
+# models from https://github.com/rishikksh20/ResUnet
 
 import torch.nn as nn
 import torch
