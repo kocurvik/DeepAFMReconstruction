@@ -8,6 +8,10 @@ def generate_grid_structure(width=128, height=128):
 
     y, x = np.mgrid[:4 * height, :4 * width]
 
+    # shift randomly
+    y -= np.random.uniform(0, 4*height)
+    x -= np.random.uniform(0, 4*width)
+
     num_lines = np.random.randint(1, 3)
 
     additive = True if np.random.rand() > 0.5 else False
