@@ -66,11 +66,16 @@ def train(args):
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     if args.opt == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     elif args.opt == 'sgd':
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+
+    print("Optimizer: ", args.opt)
+    print("Learning rate: ", args.learning_rate)
+    print("Weight decay: ", args.weight_decay)
+
 
     train_loss_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
 
