@@ -42,14 +42,14 @@ class Synthesizer():
         default_params = {
             'resolution': 128,
             # skew params
-            'linear_skew_sigma': 0.2, 'parabolic_skew_sigma': 0.2, 'skew_prob': 0.5,
+            'linear_skew_sigma': 0.1, 'parabolic_skew_sigma': 0.1, 'skew_prob': 0.5,
 
             # overshoot params
-            'overshoot_prob': 0.6, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.1, 'min_p_keep': 0.0,
+            'overshoot_prob': 0.6, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.05, 'min_p_keep': 0.0,
             'max_p_keep': 0.7, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
             # x-correlated noise params
-            'noise_prob': 0.9, 'noise_alpha_min': 0.05, 'noise_alpha_max': 0.95, 'noise_sigma_min': 0.0001,
+            'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.95, 'noise_sigma_min': 0.0,
             'noise_sigma_max': 0.05,
 
             # dilation params
