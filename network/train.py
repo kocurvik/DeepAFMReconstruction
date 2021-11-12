@@ -50,7 +50,7 @@ def load_model(args):
 
     model = ResUnet(2).cuda()
     if args.resume is not None:
-        resume_path =  exp_dir = os.path.join('checkpoints', data_dir_name, '{:03d}'.format(args.expr), '{:03d}.pth'.format(args.resume))
+        resume_path = os.path.join('checkpoints', data_dir_name, '{:03d}'.format(args.expr), '{:03d}.pth'.format(args.resume))
         print("Resuming from: ", resume_path)
         model.load_state_dict(torch.load(resume_path))
     return model, exp_dir
