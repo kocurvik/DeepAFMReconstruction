@@ -11,7 +11,8 @@ from hashlib import sha1
 import git
 import numpy as np
 
-from synth.artifacts import dilate, apply_x_correlated_noise, grad_overshoot_markov, add_linear_skew, add_parabolic_skew
+from synth.artifacts import dilate, apply_x_correlated_noise, grad_overshoot_markov, add_linear_skew, \
+    add_parabolic_skew, faster_dilate
 from synth.generator import generate_grid_structure
 
 from utils.image import normalize, load_tips_from_pkl, normalize_joint
@@ -98,7 +99,7 @@ class Synthesizer():
 
     def apply_artifacts_and_noise(self, image):
         tip = self.get_random_tip()
-        image = dilate(image, tip)
+        image = faster_dilate(image, tip)
 
         image_l = image
         image_r = image

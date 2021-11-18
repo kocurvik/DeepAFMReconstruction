@@ -4,6 +4,7 @@ import time
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.ndimage import binary_dilation
 
 from synth.generator import generate_grid_structure
 from utils.image import load_tips_from_pkl, normalize
@@ -42,7 +43,7 @@ def dilate(image, kernel):
     return ret_image
 
 
-def faster_dilate(image, kernel):
+def fast_dilate(image, kernel):
     image_height = image.shape[0]
     image_width = image.shape[1]
 
@@ -93,6 +94,48 @@ def faster_dilate(image, kernel):
                 ret_image[i - kernel_half_height, j - kernel_half_width] = image_window[indices] - (kernel_max - kernel[indices])
     return ret_image
 
+
+def faster_dilate(image, kernel):
+    image_height = image.shape[0]
+    image_width = image.shape[1]
+
+    kernel_height = kernel.shape[0]
+    kernel_width = kernel.shape[1]
+    kernel_half_height = kernel_height // 2
+    kernel_half_width = kernel_width // 2
+    kernel_max = np.max(kernel)
+
+    ret_image = np.zeros_like(image)
+    mask_height = image_height + kernel_height
+    mask_width = image_width + kernel_width
+    mask = np.zeros((mask_height, mask_width))
+    mask[kernel_half_height: mask_height - (kernel_half_height) - (kernel_height % 2),
+         kernel_half_width: mask_width - (kernel_half_width) - (kernel_width % 2)] = image
+
+    image_changes = np.zeros_like(mask)
+
+    image_changes[kernel_half_height: image_height + kernel_half_height,
+                    kernel_half_width + 1: image_width + kernel_half_width] += 1 * (image[:, 1:] == image[:, :-1])
+
+    image_changes[kernel_half_height + 1: image_height + kernel_half_height,
+                    kernel_half_width: image_width + kernel_half_width] = 1 * (image[1:, :] == image[:-1, :])
+
+    dilation_mask = np.clip(image_changes, 0, 1.0)
+
+    element = cv2.getStructuringElement(cv2.MORPH_RECT,  (kernel_width, kernel_height))
+    dilation_mask = cv2.dilate(dilation_mask, element)
+
+    for i in range(kernel_half_height, image_height + kernel_half_height):
+        for j in range(kernel_half_width, image_width + kernel_half_width):
+            if dilation_mask[i + kernel_half_height, j + kernel_half_width]:
+                image_window = mask[i - kernel_half_height: i + (kernel_half_height) + (kernel_height % 2),
+                                    j - kernel_half_width: j + (kernel_half_width) + (kernel_width % 2)]
+                profile = image_window + kernel
+                indices = np.unravel_index(np.argmax(profile, axis=None), profile.shape)
+                ret_image[i - kernel_half_height, j - kernel_half_width] = image_window[indices] - (kernel_max - kernel[indices])
+            else:
+                ret_image[i - kernel_half_height, j - kernel_half_width] = mask[i, j]
+    return ret_image
 
 def add_shadow_artifacts(image, deg_start, direction=True, deg_spread=5):
     """
@@ -183,7 +226,9 @@ if __name__ == '__main__':
     tips = load_tips_from_pkl(tips_path)
     tips_keys = list(tips.keys())
 
-    start_time = time.time()
+    images = []
+    tips_generated = []
+
     for i in range(100):
         tip = np.random.choice(tips_keys)
         rot = np.random.randint(0, 3)
@@ -191,22 +236,14 @@ if __name__ == '__main__':
 
         image = generate_grid_structure(256, 256)
 
-        faster_dil_image = faster_dilate(image, tip_scaled)
-
-    print("Faster time: ", time.time() - start_time)
-
+        images.append(image)
+        tips_generated.append(tip)
 
     start_time = time.time()
-    for i in range(100):
-        tip = np.random.choice(tips_keys)
-        rot = np.random.randint(0, 3)
-        tip_scaled = normalize(tips[tip]['data'])[:20, :]
-
-        image = generate_grid_structure(256, 256)
-
-        faster_dil_image = faster_dilate(image, tip_scaled)
+    for image, tip in zip(images, tips_generated):
+        fast_dil_image = fast_dilate(image, tip_scaled)
         dil_image = dilate(image, tip_scaled)
 
-    print("Original time: ", time.time() - start_time)
+        print(np.sum(np.abs(fast_dil_image - dil_image)))
 
 
