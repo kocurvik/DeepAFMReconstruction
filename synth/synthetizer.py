@@ -46,12 +46,12 @@ class Synthesizer():
             'linear_skew_sigma': 0.1, 'parabolic_skew_sigma': 0.1, 'skew_prob': 0.25,
 
             # overshoot params
-            'overshoot_prob': 0.7, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.05, 'min_p_keep': 0.0,
-            'max_p_keep': 0.7, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
+            'overshoot_prob': 0.5, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.1, 'min_p_keep': 0.0,
+            'max_p_keep': 0.9, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
             # x-correlated noise params
-            'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0,
-            'noise_sigma_max': 0.03,
+            'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
+            'noise_sigma_max': 0.05,
 
             # dilation params
             'tip_scale_min': 1.0, 'tip_scale_max': 10.0}
@@ -193,14 +193,6 @@ def parse_command_line():
 
 if __name__ == '__main__':
     args = parse_command_line()
-
     syn = Synthesizer(**vars(args))
     entries = generate_dataset(syn, num_items=args.num_items, num_workers=args.num_workers)
     save_dataset(syn, entries, args)
-
-    # for num_workers in range(0, 17, 4):
-    # for num_workers in range(0, 17, 4):
-    #     start_time = time.time()
-    #     syn = Synthesizer(tip_pkl_path, num_workers=num_workers)
-    #     generate_dataset(syn, 3000, num_workers)
-    #     print("For {} workers comp took {}".format(num_workers, time.time() - start_time))
