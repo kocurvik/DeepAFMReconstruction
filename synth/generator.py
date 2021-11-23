@@ -41,8 +41,22 @@ def generate_grid_structure(width=128, height=128):
 
     return canvas
 
-if __name__ == '__main__':
-    for i in range(100):
-        canvas = generate_grid_structure(128, 128)
-        cv2.imshow("Canvas", canvas / np.max(canvas))
-        cv2.waitKey(0)
+
+class GridGenerator:
+    def __init__(self, **kwargs):
+        for (prop, default) in GridGenerator.get_default_param_dict().items():
+            setattr(self, prop, kwargs.get(prop, default))
+
+    @staticmethod
+    def get_default_param_dict():
+        default_params = {'resolution': 128}
+        return default_params
+
+    def generate(self):
+        return generate_grid_structure(self.resolution, self.resolution)
+
+# if __name__ == '__main__':
+#     for i in range(100):
+#         canvas = generate_grid_structure(128, 128)
+#         cv2.imshow("Canvas", canvas / np.max(canvas))
+#         cv2.waitKey(0)

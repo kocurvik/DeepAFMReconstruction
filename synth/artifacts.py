@@ -3,139 +3,11 @@ import time
 
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
-from scipy.ndimage import binary_dilation
 
 from synth.generator import generate_grid_structure
+from synth.tip_dilation import dilate, fast_dilate
 from utils.image import load_tips_from_pkl, normalize
 
-
-def dilate(image, kernel):
-    """
-    Dilates image by kernel
-    :param image:
-    :param kernel:
-    :return:
-    """
-    image_height = np.shape(image)[0]
-    image_width = np.shape(image)[1]
-    kernel_height = np.shape(kernel)[0]
-    kernel_width = np.shape(kernel)[1]
-    kernel_half_height = kernel_height // 2
-    kernel_half_width = kernel_width // 2
-
-    mask_height = image_height + kernel_height
-    mask_width = image_width + kernel_width
-    mask = np.zeros((mask_height, mask_width))
-    mask[kernel_half_height: mask_height - (kernel_half_height) - (kernel_height % 2),
-         kernel_half_width: mask_width - (kernel_half_width) - (kernel_width % 2)] = image
-    ret_image = np.zeros((image_height, image_width))
-    kernal_max_ind = np.unravel_index(np.argmax(kernel, axis=None), kernel.shape)
-
-    for i in range(kernel_half_height, image_height + kernel_half_height):
-        for j in range(kernel_half_width, image_width + kernel_half_width):
-            image_window = mask[i - kernel_half_height: i + (kernel_half_height) + (kernel_height % 2),
-                                j - kernel_half_width: j + (kernel_half_width) + (kernel_width % 2)]
-            profile = image_window + kernel
-            indices = np.unravel_index(np.argmax(profile, axis=None), profile.shape)
-            ret_image[i - kernel_half_height, j - kernel_half_width] = image_window[indices] - (kernel[kernal_max_ind] - kernel[indices])
-
-    return ret_image
-
-
-def fast_dilate(image, kernel):
-    image_height = image.shape[0]
-    image_width = image.shape[1]
-
-    kernel_height = kernel.shape[0]
-    kernel_width = kernel.shape[1]
-    kernel_half_height = kernel_height // 2
-    kernel_half_width = kernel_width // 2
-    kernel_max = np.max(kernel)
-
-    mask_height = image_height + kernel_height
-    mask_width = image_width + kernel_width
-    mask = np.zeros((mask_height, mask_width))
-    mask[kernel_half_height: mask_height - (kernel_half_height) - (kernel_height % 2),
-         kernel_half_width: mask_width - (kernel_half_width) - (kernel_width % 2)] = image
-
-    image_x_changes = np.zeros_like(mask)
-    image_y_changes = np.zeros_like(mask)
-
-    image_x_changes[kernel_half_height: image_height + kernel_half_height,
-                    kernel_half_width + 1: image_width + kernel_half_width] = 1 * (image[:, 1:] == image[:, :-1])
-
-    image_y_changes[kernel_half_height + 1: image_height + kernel_half_height,
-                    kernel_half_width: image_width + kernel_half_width] = 1 * (image[1:, :] == image[:-1, :])
-
-    # image_x_changes[kernel_half_width: image_width + kernel_half_width, 0] = np.where(image[:, 0] == 0, 1, 0)
-    # image_x_changes[kernel_half_width: image_width + kernel_half_width, image_width + kernel_half_width] = np.where(image[:, -1] == 0, 1, 0)
-    for i in range(1, image_x_changes.shape[1]):
-        image_x_changes[:, i] = (image_x_changes[:, i - 1] + 1) * image_x_changes[:, i]
-
-    # image_y_changes[0, kernel_half_height: image_height + kernel_half_height] = np.where(image[0, :] == 0, 1, 0)
-    # image_y_changes[image_height + kernel_half_height, kernel_half_height: image_height + kernel_half_height] = np.where(image[-1, :] == 0, 1, 0)
-    for i in range(1, image_y_changes.shape[0]):
-        image_y_changes[i, :] = (image_y_changes[i - 1, :] + 1) * image_y_changes[i, :]
-
-    # get mask of positions where dilation is not necessar
-    ignore_mask = np.logical_and(image_x_changes >= (kernel_width * 2 + 1), image_y_changes >= (kernel_height * 2 + 1))
-    ret_image = np.zeros_like(image)
-
-    for i in range(kernel_half_height, image_height + kernel_half_height):
-        for j in range(kernel_half_width, image_width + kernel_half_width):
-            if ignore_mask[i + kernel_half_height, j + kernel_half_width]:
-                ret_image[i - kernel_half_height, j - kernel_half_width] = mask[i, j]
-            else:
-                image_window = mask[i - kernel_half_height: i + (kernel_half_height) + (kernel_height % 2),
-                                    j - kernel_half_width: j + (kernel_half_width) + (kernel_width % 2)]
-                profile = image_window + kernel
-                indices = np.unravel_index(np.argmax(profile, axis=None), profile.shape)
-                ret_image[i - kernel_half_height, j - kernel_half_width] = image_window[indices] - (kernel_max - kernel[indices])
-    return ret_image
-
-
-def faster_dilate(image, kernel):
-    image_height = image.shape[0]
-    image_width = image.shape[1]
-
-    kernel_height = kernel.shape[0]
-    kernel_width = kernel.shape[1]
-    kernel_half_height = kernel_height // 2
-    kernel_half_width = kernel_width // 2
-    kernel_max = np.max(kernel)
-
-    ret_image = np.zeros_like(image)
-    mask_height = image_height + kernel_height
-    mask_width = image_width + kernel_width
-    mask = np.zeros((mask_height, mask_width))
-    mask[kernel_half_height: mask_height - (kernel_half_height) - (kernel_height % 2),
-         kernel_half_width: mask_width - (kernel_half_width) - (kernel_width % 2)] = image
-
-    image_changes = np.zeros_like(mask)
-
-    image_changes[kernel_half_height: image_height + kernel_half_height,
-                    kernel_half_width + 1: image_width + kernel_half_width] += 1 * (image[:, 1:] == image[:, :-1])
-
-    image_changes[kernel_half_height + 1: image_height + kernel_half_height,
-                    kernel_half_width: image_width + kernel_half_width] = 1 * (image[1:, :] == image[:-1, :])
-
-    dilation_mask = np.clip(image_changes, 0, 1.0)
-
-    element = cv2.getStructuringElement(cv2.MORPH_RECT,  (kernel_width, kernel_height))
-    dilation_mask = cv2.dilate(dilation_mask, element)
-
-    for i in range(kernel_half_height, image_height + kernel_half_height):
-        for j in range(kernel_half_width, image_width + kernel_half_width):
-            if dilation_mask[i + kernel_half_height, j + kernel_half_width]:
-                image_window = mask[i - kernel_half_height: i + (kernel_half_height) + (kernel_height % 2),
-                                    j - kernel_half_width: j + (kernel_half_width) + (kernel_width % 2)]
-                profile = image_window + kernel
-                indices = np.unravel_index(np.argmax(profile, axis=None), profile.shape)
-                ret_image[i - kernel_half_height, j - kernel_half_width] = image_window[indices] - (kernel_max - kernel[indices])
-            else:
-                ret_image[i - kernel_half_height, j - kernel_half_width] = mask[i, j]
-    return ret_image
 
 def add_shadow_artifacts(image, deg_start, direction=True, deg_spread=5):
     """
@@ -226,6 +98,10 @@ if __name__ == '__main__':
     tips = load_tips_from_pkl(tips_path)
     tips_keys = list(tips.keys())
 
+    tips_array = np.array([tips[k]['data'] for k in tips_keys])
+
+    m_tips = np.max(tips_array, axis=(-1, -2))
+
     images = []
     tips_generated = []
 
@@ -245,5 +121,66 @@ if __name__ == '__main__':
         dil_image = dilate(image, tip_scaled)
 
         print(np.sum(np.abs(fast_dil_image - dil_image)))
+
+
+
+
+class Artifactor():
+    def __init__(self, **kwargs):
+        for (prop, default) in Artifactor.get_default_param_dict().items():
+            setattr(self, prop, kwargs.get(prop, default))
+
+    @staticmethod
+    def get_default_param_dict():
+        default_params = {
+            # skew params
+            'linear_skew_sigma': 0.1, 'parabolic_skew_sigma': 0.1, 'skew_prob': 0.25,
+
+            # overshoot params
+            'overshoot_prob': 0.5, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.2, 'min_p_keep': 0.0,
+            'max_p_keep': 0.9, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
+
+            # x-correlated noise params
+            'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
+            'noise_sigma_max': 0.1,}
+        return default_params
+
+    def add_overshoot(self, image, flip=False):
+        t = np.random.uniform(0, self.max_overshoot_t)
+        mag = np.random.uniform(0, self.max_overshoot_mag)
+        p_keep = np.random.uniform(self.min_p_keep, self.max_p_keep)
+        p_weaken = np.random.uniform(0.0, 1 - p_keep - 0.05)
+        weaken_factor = np.random.uniform(self.min_weaken_factor, self.max_weaken_factor)
+        image = grad_overshoot_markov(image, t, mag, p_keep, p_weaken, weaken_factor, flip=flip)
+
+        return image
+
+    def add_skew(self, image):
+        image = add_linear_skew(image, sigma_a=self.linear_skew_sigma, sigma_b=self.linear_skew_sigma)
+        image = add_parabolic_skew(image, sigma_a=self.parabolic_skew_sigma, sigma_b=self.parabolic_skew_sigma)
+        return image
+
+    def add_noise(self, image, flip=False):
+        sigma = np.random.uniform(self.noise_sigma_min, self.noise_sigma_max)
+        alpha = np.random.uniform(self.noise_alpha_min, self.noise_alpha_max)
+        return apply_x_correlated_noise(image, alpha, sigma, flip=flip)
+
+    def apply(self, img):
+        img_l = img
+        img_r = img
+
+        if np.random.rand() < self.overshoot_prob:
+            img_l = self.add_overshoot(img_l)
+            img_r = self.add_overshoot(img_r, flip=True)
+
+        if np.random.rand() < self.skew_prob:
+            img_l = self.add_skew(img_l)
+            img_r = self.add_skew(img_r)
+
+        if np.random.rand() < self.noise_prob:
+            img_l = self.add_noise(img_l)
+            img_r = self.add_noise(img_r, flip=True)
+
+        return img_l, img_r
 
 
