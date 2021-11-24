@@ -18,8 +18,9 @@ from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--eval', action='store_true', default=False)
     parser.add_argument('-i', '--images', action='store_true', default=False)
-    parser.add_argument('-r', '--resume', type=int, default=None, help='checkpoint to resume from')
+    parser.add_argument('-ai', '--aligned_images', action='store_true', default=False)
     parser.add_argument('model_path')
     parser.add_argument('data_path')
     args = parser.parse_args()
@@ -45,10 +46,7 @@ def baseline_lr_filtering(img_1, img_2, threshold=0.01):
     return res
 
 
-
 def get_metric(img_1, img_2, metric='mse', p1=None, p2=None, display=None):
-    # affine_matrix = register_affine_orb(img_1, img_2)
-    # print(affine_matrix)
     transform, metric_value = register_rigid_sitk(img_1, img_2, metric=metric, p1=p1, p2=p2, verbose=False)
 
     img_2_t, img_c = resample_images(img_1, img_2, transform)
@@ -91,16 +89,6 @@ def get_multi_input(model, img_l, img_r, tile_size=8):
     w_tiles = ((img_l.shape[1] - 128) // tile_size) + 1
     h_tiles = ((img_l.shape[0] - 128) // tile_size) + 1
 
-    # input = np.zeros([h_tiles, w_tiles, 2, 128, 128])
-
-    # for i in range(h_tiles):
-    #     for j in range(w_tiles):
-    #         input[i, j] = stack[:, i*tile_size: i*tile_size + 128, tile_size*8: tile_size*8 + 128]
-
-    # input = input.reshape([h_tiles * w_tiles, 2, 128, 128]).astype(np.float32)
-    # output_tiles = model(torch.from_numpy(input).cuda()).detach().cpu().numpy()
-    # output_tiles.reshape([h_tiles, w_tiles, 128, 128])
-
     output = np.zeros_like(img_l)
     output_counts = np.zeros_like(img_l)
 
@@ -111,9 +99,6 @@ def get_multi_input(model, img_l, img_r, tile_size=8):
 
             output[i*tile_size: i*tile_size + 128, j*tile_size: j*tile_size + 128] += output_tile[0, 0]
             output_counts[i*tile_size: i*tile_size + 128, j*tile_size: j*tile_size + 128] += 1
-
-    # cv2.imshow("output", output/output_counts)
-    # cv2.waitKey(0)
 
     return output/output_counts
 
@@ -147,8 +132,8 @@ def eval_same_sample(entries):
     for idx_1, idx_2 in itertools.combinations(np.arange(len(entries)), 2):
         print("Images: {} and {}".format(entries[idx_1]['filename'], entries[idx_2]['filename']))
         # for metric in ['mse', 'correlation', 'mmi']:
-        # for metric in ['mse']:
-        for metric in ['correlation']:
+        for metric in ['mse']:
+        # for metric in ['correlation']:
             print('\t Metric ', metric)
 
             baseline_metric_value, reg_image_baseline = get_metric(entries[idx_1]['img_baseline'], entries[idx_2]['img_baseline'],
@@ -187,49 +172,74 @@ def inference(model, entries):
     return entries
 
 
-def output_images(entries):
+def output_images(entries, data_basename, model_basename):
     pdf_imgs = []
     for entry in entries:
-        img_l = Image.fromarray(entry['img_l'])
-        img_r = Image.fromarray(entry['img_r'])
-        img_baseline = Image.fromarray(entry['img_baseline'])
-        img_nn = Image.fromarray(entry['img_nn'])
-
         images = [Image.fromarray((255 * entry[x] / entry[x].max()).astype(np.uint8)) for x in ['img_l', 'img_r', 'img_baseline', 'img_nn']]
-        widths, heights = zip(*(i.size for i in images))
-
-        total_width = sum(widths)
-        max_height = max(heights)
-
-        img_new = Image.new('RGB', (total_width, max_height))
-
-        x_offset = 0
-        for im in images:
-            img_new.paste(im, (x_offset, 0))
-            x_offset += im.size[0]
+        img_new = compose_images(images)
 
         pdf_imgs.append(img_new)
 
-    pdf_imgs[0].save("eval.pdf", "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
-
-def eval_neno(model, path, images=False):
-    print("Evaluating sample from path: ", path)
-
-    with open(path, 'rb') as f:
-        entries = pickle.load(f)
-    entries = inference(model, entries)
-    if images:
-        output_images(entries)
-    eval_same_sample(entries)
+    pdf_imgs[0].save("vis/images_{}_{}.pdf".format(data_basename, model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
 
 
-if __name__ == '__main__':
-    args = parse_command_line()
+def compose_images(images):
+    widths, heights = zip(*(i.size for i in images))
+    total_width = sum(widths)
+    max_height = max(heights)
+    img_new = Image.new('RGB', (total_width, max_height))
+    x_offset = 0
+    for im in images:
+        img_new.paste(im, (x_offset, 0))
+        x_offset += im.size[0]
+    return img_new
 
+
+def output_aligned_images(entries, data_basename, model_basename):
+    entry_first = entries[0]
+    images = [Image.fromarray((255 * entry_first[x] / entry_first[x].max()).astype(np.uint8)) for x in
+              ['img_l', 'img_r', 'img_baseline', 'img_nn']]
+    pdf_imgs = [compose_images(images)]
+
+    for idx in range(1, len(entries)):
+        images = []
+        entry = entries[idx]
+        for img_key in ['img_l', 'img_r', 'img_baseline', 'img_nn']:
+            orig_img = entry_first[img_key]
+            t_img = entry[img_key]
+            transform, metric_value = register_rigid_sitk(orig_img, t_img, metric='mse', p1=entry_first['registration_points'], p2=entry['registration_points'], verbose=False)
+            img_t, _ = resample_images(orig_img, t_img, transform)
+            images.append(Image.fromarray((255 * img_t / img_t.max()).astype(np.uint8)))
+
+        pdf_imgs.append(compose_images(images))
+
+    pdf_imgs[0].save("vis/aligned_{}_{}.pdf".format(data_basename, model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
+
+
+def main(args):
     model = ResUnet(2).cuda()
     print("Resuming from: ", args.model_path)
+    model_basename = os.path.basename(args.model_path).split('.')[0]
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
 
-    # eval_group(model, args.path)
-    eval_neno(model, args.data_path, images=args.images)
+    print("Loading data from path: ", args.data_path)
+    data_basename = os.path.basename(os.path.dirname(args.data_path))
+    with open(args.data_path, 'rb') as f:
+        entries = pickle.load(f)
+
+    entries = inference(model, entries)
+    if args.images:
+        output_images(entries, data_basename, model_basename)
+
+    if args.aligned_images:
+        output_aligned_images(entries, data_basename, model_basename)
+
+    if args.eval:
+        eval_same_sample(entries)
+
+
+if __name__ == '__main__':
+    # Example usage python eval/run_eval.py -i checkpoints/4e0b.pth "D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1/entries.pkl"
+    args = parse_command_line()
+    main(args)
