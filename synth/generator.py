@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy import ndimage
+
+from utils.image import normalize
 
 
 def generate_grid_structure(width=128, height=128):
@@ -60,3 +63,66 @@ class GridGenerator:
 #         canvas = generate_grid_structure(128, 128)
 #         cv2.imshow("Canvas", canvas / np.max(canvas))
 #         cv2.waitKey(0)
+
+
+def apply_linear_f(x, min_t, max_t):
+    if min_t > max_t:
+        return np.where(x < min_t, 0.0, 1.0)
+    else:
+        x -= min_t
+        x /= max_t - min_t
+        x = np.clip(x, 0.0, 1.0)
+        return x
+
+class FFTGenerator:
+    def __init__(self, **kwargs):
+        for (prop, default) in FFTGenerator.get_default_param_dict().items():
+            setattr(self, prop, kwargs.get(prop, default))
+
+        self.gen_resolution = 4 * self.resolution
+
+    @staticmethod
+    def get_default_param_dict():
+        default_params = {'resolution': 128,
+                          'num_noises_zipf_a': 2, 'num_waves_zipf_a': 1.5,
+                          't_beta_low': 2, 't_beta_high': 4,
+                          'periodic_binomial_p': 0.02}
+        return default_params
+
+    def generate_single_canvas_periodic_noise(self, num_waves):
+        ifft_canvas = 1.0j * np.zeros([self.gen_resolution, self.gen_resolution])
+
+        for _ in range(num_waves):
+            y = np.random.binomial(self.gen_resolution // 2, self.periodic_binomial_p)
+            x = np.random.binomial(self.gen_resolution // 2, self.periodic_binomial_p)
+            a = np.random.randn()
+            b = np.random.randn()
+            ifft_canvas[y, x] = a + b * 1.0j
+
+        canvas = normalize(np.abs(np.fft.ifft2(ifft_canvas)))
+
+        return canvas
+
+
+    def generate(self):
+        num_noises = min(np.random.zipf(self.num_noises_zipf_a), 20)
+        noises = np.empty([num_noises, self.gen_resolution, self.gen_resolution])
+
+        for i in range(num_noises):
+            num_waves = min(np.random.zipf(self.num_waves_zipf_a) + 1, 100)
+            noise = self.generate_single_canvas_periodic_noise(num_waves)
+            min_t = np.random.beta(self.t_beta_low, self.t_beta_high)
+            max_t = np.random.beta(self.t_beta_high, self.t_beta_high)
+            # max_t = np.random.rand()
+            noise = apply_linear_f(noise, min_t, max_t)
+            noises[i] = noise
+
+        noise_weights = np.random.dirichlet(np.ones(num_noises))
+        noise = np.average(noises, weights=noise_weights, axis=0)
+
+        noise = ndimage.rotate(noise, np.random.rand() * 90, reshape=False)
+
+        x_crop = np.random.randint(self.gen_resolution - 3 * self.resolution, self.gen_resolution - 2 * self.resolution)
+        y_crop = np.random.randint(self.gen_resolution - 3 * self.resolution, self.gen_resolution - 2 * self.resolution)
+
+        return noise[y_crop: y_crop + self.resolution, x_crop: x_crop + self.resolution]

@@ -12,7 +12,7 @@ import git
 import numpy as np
 
 from synth.artifacts import Artifactor
-from synth.generator import GridGenerator
+from synth.generator import GridGenerator, FFTGenerator
 from synth.tip_dilation import FastTipDilator
 from utils.image import normalize_joint
 
@@ -32,7 +32,7 @@ class Synthesizer():
         for (prop, default) in default_params.items():
             setattr(self, prop, kwargs.get(prop, default))
 
-        self.generator = GridGenerator(**self.get_param_dict())
+        self.generator = FFTGenerator(**self.get_param_dict())
         self.tip_dilator = FastTipDilator(tips_path, **self.get_param_dict())
         self.artifactor = Artifactor(**self.get_param_dict())
 
@@ -40,7 +40,7 @@ class Synthesizer():
     def get_default_param_dict():
         default_params = {}
 
-        default_params.update(GridGenerator.get_default_param_dict())
+        default_params.update(FFTGenerator.get_default_param_dict())
         default_params.update(FastTipDilator.get_default_param_dict())
         default_params.update(Artifactor.get_default_param_dict())
 
