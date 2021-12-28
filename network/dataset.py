@@ -63,8 +63,12 @@ class Dataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    path = 'D:/Research/data/GEFSEM/synth/generated/0ba369f541fd443c5b5f388ba84b0430515b8045/'
-    dataset = Dataset(path, 'test')
+    path = 'D:/Research/data/GEFSEM/synth/generated/9642ad210c45d96d3996f1bacbcd57f9186eecfa/'
+    dataset = Dataset(path, 'train')
+    # dataset.artifactor.shadows_prob = 1.0
+    # dataset.artifactor.overshoot_prob = 0.0
+    # dataset.artifactor.noise_prob = 0.0
+    # dataset.artifactor.skew_prob = 0.0
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
 
     for item in data_loader:

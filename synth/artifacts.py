@@ -140,9 +140,13 @@ class Artifactor():
             'overshoot_prob': 0.5, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.2, 'min_p_keep': 0.0,
             'max_p_keep': 0.9, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
+            # shadows params
+            'shadows_prob': 0.2, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
+            'shadows_max': 1.0, 'shadows_max_randomize_percentage': 0.3,
+
             # x-correlated noise params
             'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
-            'noise_sigma_max': 0.1,}
+            'noise_sigma_max': 0.1}
         return default_params
 
     def add_overshoot(self, image, flip=False):
@@ -160,14 +164,35 @@ class Artifactor():
         image = add_parabolic_skew(image, sigma_a=self.parabolic_skew_sigma, sigma_b=self.parabolic_skew_sigma)
         return image
 
+    def add_shadows(self, image, flip=False, per_pixel_decrease=None):
+        if per_pixel_decrease is None:
+            per_pixel_decrease = 1 / np.random.uniform(0, self.shadows_max * image.shape[1])
+
+        if np.random.rand() < self.shadows_randomize_prob:
+            max_randomize_percentage = np.random.uniform(0, self.shadows_max_randomize_percentage)
+
+            per_pixel_decrease += per_pixel_decrease * np.random.uniform(-max_randomize_percentage, max_randomize_percentage, image.shape[0])
+
+        if flip:
+            image = np.flip(image, axis=-1)
+
+        prev = np.zeros(image.shape[0])
+        for i in range(image.shape[1]):
+            image[:, i] = np.where(image[:, i] > prev, image[:, i], prev)
+            prev = image[:, i] - per_pixel_decrease
+
+        if flip:
+            image = np.flip(image, axis=-1)
+        return image
+
     def add_noise(self, image, flip=False):
         sigma = np.random.uniform(self.noise_sigma_min, self.noise_sigma_max)
         alpha = np.random.uniform(self.noise_alpha_min, self.noise_alpha_max)
         return apply_x_correlated_noise(image, alpha, sigma, flip=flip)
 
     def apply(self, img):
-        img_l = img
-        img_r = img
+        img_l = np.copy(img)
+        img_r = np.copy(img)
 
         if np.random.rand() < self.overshoot_prob:
             img_l = self.add_overshoot(img_l)
@@ -176,6 +201,14 @@ class Artifactor():
         if np.random.rand() < self.skew_prob:
             img_l = self.add_skew(img_l)
             img_r = self.add_skew(img_r)
+
+        if np.random.rand() < self.shadows_prob:
+            if np.random.rand() < self.shadows_uniform_both_p:
+                per_pixel_decrease = 1 / np.random.uniform(0, self.shadows_max * img_l.shape[1])
+            else:
+                per_pixel_decrease = None
+            img_l = self.add_shadows(img_l, per_pixel_decrease=per_pixel_decrease)
+            img_r = self.add_shadows(img_r, flip=True, per_pixel_decrease=per_pixel_decrease)
 
         if np.random.rand() < self.noise_prob:
             img_l = self.add_noise(img_l)
