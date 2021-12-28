@@ -22,13 +22,21 @@ def normalize_joint(imgs):
     min = np.min(joint)
 
     if max == min:
-        return imgs
+        return np.zeros_like(imgs)
 
     n_imgs = []
     for img in imgs:
         n_imgs.append((img - min) / (max - min))
 
     return n_imgs
+
+
+def denormalize(img, orig_imgs):
+    joint_orig = np.stack(orig_imgs, axis=0)
+    max = np.max(joint_orig)
+    min = np.min(joint_orig)
+
+    return (img * (max - min)) + min
 
 
 def remove_offset_lr(img_l, img_r, max_offset=64):
@@ -87,11 +95,11 @@ def load_tips_from_pkl(pkl_path):
     return tips
 
 if __name__ == '__main__':
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_l-r_0deg_45deg-scanner_210326_153256.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_l-r_0deg_45deg-scanner_210326_153256.gwy', remove_offset=False)
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1/TGQ1_l-r_0deg_0deg-scanner_210326_111026.gwy', remove_offset=False)
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1_b-u_0deg_0deg-scanner_210326_105247.gwy')
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1_b-u_0deg_0deg-scanner_210326_105247.gwy')
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-08-18 - Data FIT/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
-    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_t-d_0deg_60deg-scanner_210330_134900.gwy')
+    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-08-18 - Data FIT/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_t-d_0deg_60deg-scanner_210330_134900.gwy', remove_offset=False)
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy', normalize_range=True)
 
     for i in range(0, 512, 16):
