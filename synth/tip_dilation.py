@@ -115,4 +115,4 @@ class FastTipDilator():
 
     def apply(self, img_gt):
         tip = self.get_random_tip()
-        return fast_dilate(img_gt, tip)
+        return dilate(img_gt, tip)
