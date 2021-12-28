@@ -1,39 +1,14 @@
-'''
-Author: Juraj Skandera
-Date: 22.3.2021
-
-Description: Class for simple registration with default parameters.
-Simple ITK supports many options for registration. This script serves as a skeleton for more options.
-Based on previous experiments, default transformation is set as a translation, optimizer is gradient descent with regular step.
-For single modal registration, metric is correlation, for multimodal, Mattes mutual information is used.
-Single modal registration should work well, multimodal depends on the input.
-
-Usage:
-   reg = Registration(params=defaultParams)
-   reg.register()
-'''
-import copy
-import math
-
 import SimpleITK as sitk
-import os
-
 import cv2
 import numpy as np
-from PIL import Image
-import sys
-import matplotlib.pyplot as plt
-import skimage
-from scipy import ndimage
-from scipy import signal
-from skimage.metrics import structural_similarity as ssim
-from skimage import feature
-# usage:
-#   reg = Registration()
-#   reg.register()
 
 # default parameters for class init
 from utils.image import normalize
+
+
+# usage:
+#   reg = Registration()
+#   reg.register()
 
 
 def register_affine_orb(img_1, img_2, max_features=100):
@@ -132,7 +107,6 @@ def register_rigid_sitk(img_1, img_2, interpolator='linear', metric='mse', p1=No
 
     if verbose:
         reg.AddCommand(sitk.sitkIterationEvent, lambda: command_iteration(reg))
-
 
     out_transform = reg.Execute(img_1, img_2)
     metric_value = reg.GetMetricValue()
