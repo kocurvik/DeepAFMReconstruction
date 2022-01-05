@@ -112,7 +112,7 @@ class FFTGenerator:
             num_waves = min(np.random.zipf(self.num_waves_zipf_a) + 1, 100)
             noise = self.generate_single_canvas_periodic_noise(num_waves)
             min_t = np.random.beta(self.t_beta_low, self.t_beta_high)
-            max_t = np.random.beta(self.t_beta_high, self.t_beta_high)
+            max_t = np.random.beta(self.t_beta_high, self.t_beta_low)
             # max_t = np.random.rand()
             noise = apply_linear_f(noise, min_t, max_t)
             noises[i] = noise
