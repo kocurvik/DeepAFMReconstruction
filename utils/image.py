@@ -47,6 +47,7 @@ def remove_offset_lr(img_l, img_r, max_offset=64):
         mses[offset] = np.mean(diff ** 2)
 
     best_offset = np.argmin(mses)
+
     return img_l[:, best_offset:], img_r[:, :max_width - best_offset]
 
 
@@ -63,12 +64,14 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
     obj = gwyfile.load(gwy_path)
     channels = gwyfile.util.get_datafields(obj)
 
-    basename = os.path.basename(gwy_path)
-
     img_r = channels['Topo [<]'].data
     img_l = channels['Topo [>]'].data
 
-    if 'l-r' in basename or 'r-l' in basename:
+    scan_direction = obj['/0/meta']['scan.dir']
+
+    # basename = os.path.basename(gwy_path)
+    # if 'l-r' in basename or 'r-l' in basename:
+    if 'left-right' == scan_direction or 'right-left' == scan_direction:
         img_r = np.rot90(img_r)
         img_l = np.rot90(img_l)
 
@@ -95,12 +98,10 @@ def load_tips_from_pkl(pkl_path):
     return tips
 
 if __name__ == '__main__':
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGZ3_l-r_0deg_45deg-scanner_210326_153256.gwy', remove_offset=False)
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1/TGQ1_l-r_0deg_0deg-scanner_210326_111026.gwy', remove_offset=False)
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/TGQ1_b-u_0deg_0deg-scanner_210326_105247.gwy')
-    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-08-18 - Data FIT/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_t-d_0deg_60deg-scanner_210330_134900.gwy', remove_offset=False)
-    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy', normalize_range=True)
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
+    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Neno/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalSlow/kremik_5x5_t-d_0deg_slow.gwy')
+    # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalSlow/kremik_5x5_t-d_0deg.gwy')
 
     for i in range(0, 512, 16):
         print(i)
