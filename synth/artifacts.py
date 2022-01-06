@@ -142,7 +142,7 @@ class Artifactor():
 
             # shadows params
             'shadows_prob': 0.5, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
-            'shadows_max': 1.0, 'shadows_max_randomize_percentage': 0.3,
+            'shadows_max': 2.0, 'shadows_max_randomize_percentage': 0.3,
 
             # x-correlated noise params
             'noise_prob': 0.95, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
