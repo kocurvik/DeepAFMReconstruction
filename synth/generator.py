@@ -79,7 +79,8 @@ class FFTGenerator:
         for (prop, default) in FFTGenerator.get_default_param_dict().items():
             setattr(self, prop, kwargs.get(prop, default))
 
-        self.gen_resolution = 4 * self.resolution
+        self.resolution = int(self.resolution)
+        self.gen_resolution = int(4 * self.resolution)
 
     @staticmethod
     def get_default_param_dict():
