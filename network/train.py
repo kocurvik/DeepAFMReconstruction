@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import os
 
-from network.dataset import Dataset
+from network.dataset import PregeneratedDataset, OnlineDataset
 from torch.utils.data import DataLoader
 
 from network.unet import ResUnetPlusPlus, ResUnet
@@ -58,11 +58,11 @@ def load_model(args):
 def train(args):
     model, save_dir = load_model(args)
 
-    train_dataset = Dataset(args.path, 'train')
+    train_dataset = OnlineDataset(args.path, num_items=25000)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
-    val_dataset = Dataset(args.path, 'val')
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
+    val_dataset = PregeneratedDataset(args.path, 'val')
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=1)
 
     if args.opt == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)

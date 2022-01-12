@@ -84,7 +84,7 @@ class FFTGenerator:
 
     @staticmethod
     def get_default_param_dict():
-        default_params = {'resolution': 128,
+        default_params = {'resolution': 224,
                           'num_noises_zipf_a': 2, 'num_waves_zipf_a': 1.5,
                           't_beta_low': 2, 't_beta_high': 4,
                           'periodic_binomial_p': 0.02}

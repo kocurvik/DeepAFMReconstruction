@@ -4,7 +4,7 @@ import cv2
 import torch
 from torch.utils.data import DataLoader
 
-from network.dataset import Dataset
+from network.dataset import PregeneratedDataset
 from network.unet import ResUnet
 
 
@@ -24,7 +24,7 @@ def infer(args):
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
 
-    dataset = Dataset(args.data_path, args.subset)
+    dataset = PregeneratedDataset(args.data_path, args.subset)
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     for sample in loader:

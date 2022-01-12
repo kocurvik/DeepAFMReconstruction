@@ -12,7 +12,29 @@ from synth.synthetizer import Synthesizer
 from utils.image import normalize_joint
 
 
-class Dataset(torch.utils.data.Dataset):
+class OnlineDataset(torch.utils.data.Dataset):
+    def __init__(self, path, num_items=25000):
+        json_path = os.path.join(path, "{}.json".format('val'))
+        print("Loading config from val data: ", json_path)
+        with open(json_path, 'r') as f:
+            json_dict = json.load(f)
+
+        json_dict['args']['num_items'] = num_items
+        self.num_items = num_items
+
+        json_dict['args']['apply_artifacts'] = True
+
+        self.synthesizer = Synthesizer(**json_dict['args'])
+
+    def __len__(self):
+        return self.num_items
+
+    def __getitem__(self, item):
+        entry = self.synthesizer.generate_single_entry(apply_artifacts=True)
+        return {'input': torch.from_numpy(entry[:2]), 'gt':torch.from_numpy(entry[2])}
+
+
+class PregeneratedDataset(torch.utils.data.Dataset):
     def __init__(self, path, split):
         self.split = split
         self.split_path = os.path.join(path, "{}.npy".format(split))
@@ -63,8 +85,8 @@ class Dataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    path = 'D:/Research/data/GEFSEM/synth/generated/9642ad210c45d96d3996f1bacbcd57f9186eecfa/'
-    dataset = Dataset(path, 'train')
+    path = 'D:/Research/data/GEFSEM/synth/generated/8222b2450cede61d7d15ae91cb0102ac69a2958b/'
+    dataset = OnlineDataset(path)
     # dataset.artifactor.shadows_prob = 1.0
     # dataset.artifactor.overshoot_prob = 0.0
     # dataset.artifactor.noise_prob = 0.0
@@ -77,8 +99,8 @@ if __name__ == '__main__':
         cv2.imshow("GT", item['gt'][0].numpy())
         cv2.waitKey(1)
 
-        plt.plot(item['input'][0, 0].numpy()[64, :])
-        plt.plot(item['input'][0, 1].numpy()[64, :])
+        plt.plot(item['input'][0, 0].numpy()[64, :], 'r')
+        plt.plot(item['input'][0, 1].numpy()[64, :], 'b')
         plt.plot(item['gt'][0].numpy()[64, :])
         plt.show()
 

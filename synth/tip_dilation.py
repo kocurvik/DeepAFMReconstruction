@@ -101,7 +101,7 @@ class FastTipDilator():
 
     @staticmethod
     def get_default_param_dict():
-        default_params = {'tip_scale_min': 1.0, 'tip_scale_max': 50.0}
+        default_params = {'tip_prob': 0.2, 'tip_scale_min': 0.1, 'tip_scale_max': 3.0}
         return default_params
 
     def get_random_tip(self):
@@ -114,5 +114,8 @@ class FastTipDilator():
         return tip_scaled
 
     def apply(self, img_gt):
-        tip = self.get_random_tip()
-        return dilate(img_gt, tip)
+        if np.random.rand() < self.tip_prob:
+            tip = self.get_random_tip()
+            return dilate(img_gt, tip)
+        else:
+            return img_gt
