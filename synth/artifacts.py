@@ -141,11 +141,11 @@ class Artifactor():
             'max_p_keep': 0.9, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
             # shadows params
-            'shadows_prob': 0.3, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
-            'shadows_max': 2.0, 'shadows_max_randomize_percentage': 0.3,
+            'shadows_prob': 0.5, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
+            'shadows_max': 1.5, 'shadows_max_randomize_percentage': 0.3,
 
             # x-correlated noise params
-            'noise_prob': 0.7, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
+            'noise_prob': 0.8, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
             'noise_sigma_max': 0.1}
         return default_params
 
