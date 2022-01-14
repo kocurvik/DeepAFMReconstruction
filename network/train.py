@@ -29,6 +29,7 @@ def parse_command_line():
     parser.add_argument('-o', '--opt', type=str, default='sgd', help='optimizer to use: adam or sgd')
     parser.add_argument('-l', '--loss', type=str, default='l2', help='loss to use l1 or l2')
     parser.add_argument('-wd', '--weight_decay', type=float, default=0.0, help='weight decay to use during training')
+    parser.add_argument('-wgl', '--weight_grad_loss', type=float, default=0.0, help='weight of the grad part of the loss')
     parser.add_argument('-de', '--dump_every', type=int, default=0, help='save every n frames during extraction scripts')
     parser.add_argument('path')
     args = parser.parse_args()
@@ -89,6 +90,14 @@ def train(args):
         print("Using L2 loss")
         loss_layer = torch.nn.MSELoss()
 
+    if args.weight_grad_loss > 0.0:
+        print("Using grad loss with weight: ", args.weight_grad_loss)
+        sobel_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+        sobel_xy = np.stack([sobel_y.T, sobel_y], axis=0)
+        sobel_xy_kernel = torch.tensor(sobel_xy, dtype=torch.float32).unsqueeze(1).cuda()
+        train_loss_direct_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
+        train_loss_grad_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
+
     start_epoch = 0 if args.resume is None else args.resume + 1
 
     repo = git.Repo(search_parent_directories=True)
@@ -100,7 +109,10 @@ def train(args):
 
     epoch_csv_path = os.path.join(save_dir, 'train_vals.csv')
     with open(epoch_csv_path, 'w') as f:
-        f.write('epoch, train_loss_avg, train_loss_running, val_loss_avg \n')
+        if args.weight_grad_loss > 0.0:
+            f.write('epoch, train_loss_avg, train_loss_running, train_loss_running_direct, train_loss_running_grad, val_loss_avg, val_loss_avg_direct, val_loss_avg_grad \n')
+        else:
+            f.write('epoch, train_loss_avg, train_loss_running, val_loss_avg \n')
 
     print("Starting at epoch {}".format(start_epoch))
     print("Running till epoch {}".format(args.epochs))
@@ -111,16 +123,34 @@ def train(args):
         train_loss_avg = 0.0
         for i, sample in enumerate(train_loader):
             pred = model(sample['input'].cuda())[:, 0, :, :]
+            gt = sample['gt'].cuda()
             optimizer.zero_grad()
 
-            loss = loss_layer(pred, sample['gt'].cuda())
+            loss = loss_layer(pred, gt)
+
+            if args.weight_grad_loss > 0.0:
+                pred_grad_xy = torch.nn.functional.conv2d(pred.unsqueeze(1), sobel_xy_kernel)
+                gt_grad_xy = torch.nn.functional.conv2d(gt.unsqueeze(1), sobel_xy_kernel)
+                grad_loss = args.weight_grad_loss * loss_layer(pred_grad_xy, gt_grad_xy)
+
+                train_loss_direct_running = 0.9 * train_loss_direct_running + 0.1 * loss
+                train_loss_grad_running = 0.9 * train_loss_grad_running + 0.1 * grad_loss
+
+                loss += grad_loss
+
             train_loss_running = 0.9 * train_loss_running + 0.1 * loss
             train_loss_avg += loss.item()
 
             remaining_time = (time.time() - epoch_start_time) / (i + 1) * (len(train_loader) - i)
 
             if i % 100 == 0:
-                print("At step {}/{} - epoch eta: {} - running loss: {}".format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), train_loss_running.item()))
+                if args.weight_grad_loss > 0.0:
+                    print("At step {}/{} - epoch eta: {} - running loss: {} - running direct loss: {} - running grad loss".
+                          format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), train_loss_running.item(), train_loss_direct_running.item(), train_loss_grad_running.item()))
+
+                else:
+                    print("At step {}/{} - epoch eta: {} - running loss: {}".format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), train_loss_running.item()))
+
 
             optimizer.zero_grad()
             loss.backward()
@@ -132,6 +162,8 @@ def train(args):
 
         with torch.no_grad():
             val_losses = []
+            val_losses_direct = []
+            val_losses_grad = []
 
             # val_angles = []
             # val_magnitudes = []
@@ -142,14 +174,31 @@ def train(args):
 
                 loss = loss_layer(pred, sample['gt'].cuda())
 
+                if args.weight_grad_loss > 0.0:
+                    pred_grad_xy = torch.nn.functional.conv2d(pred.unsqueeze(1), sobel_xy_kernel)
+                    gt_grad_xy = torch.nn.functional.conv2d(gt.unsqueeze(1), sobel_xy_kernel)
+                    grad_loss = args.weight_grad_loss * loss_layer(pred_grad_xy, gt_grad_xy)
+
+                    val_losses_direct.append(loss.item())
+                    val_losses_grad.append(grad_loss.item())
+
+                    loss += grad_loss
+
                 val_losses.append(loss.item())
 
             print(20 * "*")
             print("Epoch {}/{}".format(e, args.epochs))
             print("val loss: {}".format(np.mean(val_losses)))
+            if args.weight_grad_loss > 0.0:
+                print("val loss direct: {}".format(np.mean(val_losses_direct)))
+                print("val loss grad: {}".format(np.mean(val_losses_grad)))
             print(20 * "*")
 
-        epoch_csv_line = '{:03d}, {:.8e}, {:.8e}, {:.8e} \n'.format(e, train_loss_avg, train_loss_running.item(), np.mean(val_losses))
+        if args.weight_grad_loss > 0.0:
+            epoch_csv_line = '{:03d}, {:.8e}, {:.8e}, {:.8e}, {:.8e}, {:.8e}, {:.8e}, {:.8e} \n'.format(
+                e, train_loss_avg, train_loss_running.item(), train_loss_direct_running.item(), train_loss_grad_running.item(), np.mean(val_losses), np.mean(val_losses_direct), np.mean(val_losses_grad))
+        else:
+            epoch_csv_line = '{:03d}, {:.8e}, {:.8e}, {:.8e} \n'.format(e, train_loss_avg, train_loss_running.item(), np.mean(val_losses))
         with open(epoch_csv_path,'a') as f:
             f.write(epoch_csv_line)
 
