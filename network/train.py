@@ -27,6 +27,7 @@ def parse_command_line():
     parser.add_argument('-expr', type=int, default=0, help='number of experiment to resume from')
     parser.add_argument('-g', '--gpu', type=str, default='0', help='which gpu to use')
     parser.add_argument('-o', '--opt', type=str, default='sgd', help='optimizer to use: adam or sgd')
+    parser.add_argument('-l', '--loss', type=str, default='l2', help='loss to use l1 or l2')
     parser.add_argument('-wd', '--weight_decay', type=float, default=0.0, help='weight decay to use during training')
     parser.add_argument('-de', '--dump_every', type=int, default=0, help='save every n frames during extraction scripts')
     parser.add_argument('path')
@@ -78,7 +79,15 @@ def train(args):
 
     train_loss_running = torch.from_numpy(np.array([0], dtype=np.float32)).cuda()
 
-    l2_loss = torch.nn.MSELoss()
+    if args.loss == 'l2':
+        print("Using L2 loss")
+        loss_layer = torch.nn.MSELoss()
+    elif args.loss == 'l1':
+        print("Using L1 loss")
+        loss_layer = torch.nn.L1Loss()
+    else:
+        print("Using L2 loss")
+        loss_layer = torch.nn.MSELoss()
 
     start_epoch = 0 if args.resume is None else args.resume + 1
 
@@ -104,7 +113,7 @@ def train(args):
             pred = model(sample['input'].cuda())[:, 0, :, :]
             optimizer.zero_grad()
 
-            loss = l2_loss(pred, sample['gt'].cuda())
+            loss = loss_layer(pred, sample['gt'].cuda())
             train_loss_running = 0.9 * train_loss_running + 0.1 * loss
             train_loss_avg += loss.item()
 
@@ -131,7 +140,7 @@ def train(args):
                 pred = model(sample['input'].cuda())[:, 0, :, :]
                 optimizer.zero_grad()
 
-                loss = l2_loss(pred, sample['gt'].cuda())
+                loss = loss_layer(pred, sample['gt'].cuda())
 
                 val_losses.append(loss.item())
 
