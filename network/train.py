@@ -60,7 +60,7 @@ def load_model(args):
 def train(args):
     model, save_dir = load_model(args)
 
-    train_dataset = OnlineDataset(args.path, num_items=25000)
+    train_dataset = OnlineDataset(args.path, num_items=16)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
     val_dataset = PregeneratedDataset(args.path, 'val')
@@ -145,7 +145,7 @@ def train(args):
 
             if i % 100 == 0:
                 if args.weight_grad_loss > 0.0:
-                    print("At step {}/{} - epoch eta: {} - running loss: {} - running direct loss: {} - running grad loss".
+                    print("At step {}/{} - epoch eta: {} - running loss: {} - running direct loss: {} - running grad loss: {}".
                           format(i, len(train_loader), datetime.timedelta(seconds=remaining_time), train_loss_running.item(), train_loss_direct_running.item(), train_loss_grad_running.item()))
 
                 else:
