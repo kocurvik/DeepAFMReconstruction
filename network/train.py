@@ -171,8 +171,9 @@ def train(args):
             for sample in val_loader:
                 pred = model(sample['input'].cuda())[:, 0, :, :]
                 optimizer.zero_grad()
+                gt = sample['gt'].cuda()
 
-                loss = loss_layer(pred, sample['gt'].cuda())
+                loss = loss_layer(pred, gt)
 
                 if args.weight_grad_loss > 0.0:
                     pred_grad_xy = torch.nn.functional.conv2d(pred.unsqueeze(1), sobel_xy_kernel)
