@@ -60,7 +60,7 @@ def load_model(args):
 def train(args):
     model, save_dir = load_model(args)
 
-    train_dataset = OnlineDataset(args.path, num_items=16)
+    train_dataset = OnlineDataset(args.path, num_items=25000)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
     val_dataset = PregeneratedDataset(args.path, 'val')
