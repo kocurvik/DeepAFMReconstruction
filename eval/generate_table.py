@@ -36,6 +36,35 @@ def generate_table(data_path):
             print("rmse - mean: {} \t median: {}, \t rcorr: - mean {} \t median: {}".format(np.mean(rmse), np.median(rmse), np.mean(rcorr), np.median(rcorr)))
             # print("mse - mean: {} \t median: {}".format(np.mean(mse), np.median(mse)))
 
+    dirs = [all_results[model_name][i]['dir'] for i in range(len(all_results[model_name]))]
+    for metric in ['rmse', 'rcorrelation']:
+        for statistic in ['Mean', 'Median']:
+            print(20 * '*')
+            print(metric + ' + ' + statistic)
+            print(20 * '*')
+            topline = 'Model & ' + ' & '.join(dirs) + '\\\\ \\hline'
+            print(topline)
+            for model, list_of_results in all_results.items():
+                vals = []
+                for i in range(len(all_results[model_name])):
+                    val = np.array(list_of_results[i][metric])
+                    val = val[np.triu_indices(len(val), k=1)]
+                    if metric == 'rmse':
+                        val = val / 1e-9
+                    if statistic == 'Mean':
+                        val = '{:.4f}'.format(np.mean(val))
+                    else:
+                        val = '{:.4f}'.format(np.median(val))
+                    if model == 'ResUNet':
+                        val = '\\textbf{{' + val + '}}'
+
+                    vals.append(val)
+
+                line = model + ' & ' + ' & '.join(vals) + '\\\\ \\hline'
+                print(line)
+
+
+
 
 
 if __name__ == '__main__':
