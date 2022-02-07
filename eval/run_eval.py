@@ -3,6 +3,7 @@ import itertools
 import json
 import os
 import pickle
+from multiprocessing import Pool
 
 import numpy as np
 import cv2
@@ -22,6 +23,10 @@ def parse_command_line():
     parser.add_argument('-e', '--eval', action='store_true', default=False)
     parser.add_argument('-i', '--images', action='store_true', default=False)
     parser.add_argument('-ai', '--aligned_images', action='store_true', default=False)
+    parser.add_argument('-s', '--smooth', action='store_true', default=False)
+    parser.add_argument('-m', '--median', action='store_true', default=False)
+    parser.add_argument('-t', '--threshold', type=float, default=0.01)
+    parser.add_argument('-nw', '--num_workers', type=int, default=6)
     parser.add_argument('model_path')
     parser.add_argument('data_path')
     args = parser.parse_args()
@@ -88,7 +93,21 @@ def get_multi_input(model, img_l, img_r, tile_size=8):
     return output/output_counts
 
 
-def eval_same_sample(entries):
+def evaluate_pair(index_pair, entries):
+    out = {}
+    idx_1, idx_2 = index_pair
+    for metric in ['mse', 'correlation']:
+        metric_value, _ = get_metric(entries[idx_1]['img_out'], entries[idx_2]['img_out'],
+                                                p1=entries[idx_1]['registration_points'],
+                                                p2=entries[idx_2]['registration_points'],
+                                                metric=metric, display=None)
+        out[metric] = metric_value
+
+    return out
+
+
+
+def eval_same_sample(entries, num_workers=6):
     results = {'filenames': {i: entry['filename'] for i, entry in enumerate(entries)}}
 
     results['mse'] = np.ones([len(entries), len(entries)])
@@ -98,14 +117,17 @@ def eval_same_sample(entries):
 
     # results['correlation'] = np.ones([len(entries), len(entries)])
 
-    for idx_1, idx_2 in itertools.combinations(np.arange(len(entries)), 2):
+    index_pairs = list(itertools.combinations(np.arange(len(entries)), 2))
+
+    pool = Pool(num_workers)
+    metric_values = pool.starmap(evaluate_pair, zip(index_pairs, itertools.repeat(entries)))
+
+
+    for out_idx, index_pair in enumerate(index_pairs):
+        idx_1, idx_2 = index_pair
         print("Images: {} and {}".format(entries[idx_1]['filename'], entries[idx_2]['filename']))
         for metric in ['mse', 'correlation']:
-        # for metric in ['mse']:
-            metric_value, reg_image_nn = get_metric(entries[idx_1]['img_out'], entries[idx_2]['img_out'],
-                                                    p1=entries[idx_1]['registration_points'],
-                                                    p2=entries[idx_2]['registration_points'],
-                                                    metric=metric, display=1)
+            metric_value = metric_values[out_idx][metric]
             print('\t \t {}: {}, sqrt: {}'.format(metric, metric_value, np.sqrt(metric_value)))
             results[metric][idx_1, idx_2] = metric_value
             results[metric][idx_2, idx_1] = metric_value
@@ -124,6 +146,10 @@ def inference(model, entries):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
+        # if 'slow' in entry['filename']:
+        #     entry['img_out'] = img_r.astype(np.float32)
+        #     continue
+
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
         # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
         nn_input = torch.from_numpy(np.stack([img_l_normalized, img_r_normalized], axis=0)[None, ...]).float().cuda()
@@ -133,12 +159,20 @@ def inference(model, entries):
     return entries
 
 
-def apply_baseline(entries):
+def apply_baseline(entries, smooth=False, median=False, threshold=0.1):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
+        # if 'slow' in entry['filename']:
+        #     entry['img_out'] = img_r.astype(np.float32)
+        #     continue
+
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
-        img_baseline = normalize(baseline_lr_filtering(img_l_normalized, img_r_normalized))
+        img_baseline = normalize(baseline_lr_filtering(img_l_normalized, img_r_normalized, threshold=threshold))
+        if smooth:
+            img_baseline = cv2.GaussianBlur(img_baseline, (5, 5), 0)
+        if median:
+            img_baseline = cv2.medianBlur(img_baseline, 5)
         entry['img_out'] = denormalize(img_baseline, [img_l, img_r])
     return entries
 
@@ -203,8 +237,12 @@ def main(args):
         list_of_entries.append(entries)
 
     if args.model_path == 'baseline':
-        list_of_entries = [apply_baseline(entries) for entries in list_of_entries]
-        model_basename = 'baseline'
+        list_of_entries = [apply_baseline(entries, args.smooth, args.median, threshold=args.threshold) for entries in list_of_entries]
+        model_basename = 'baseline_{}'.format(args.threshold)
+        if args.smooth:
+            model_basename += '_smooth'
+        if args.median:
+            model_basename += '_median'
     else:
         model = ResUnet(2).cuda()
         print("Resuming from: ", args.model_path)
@@ -222,7 +260,7 @@ def main(args):
     if args.eval:
         list_of_results = []
         for entries, dir in zip(list_of_entries, dirs):
-            results = eval_same_sample(entries)
+            results = eval_same_sample(entries, num_workers=args.num_workers)
             results['dir'] = dir
             list_of_results.append(results)
 
