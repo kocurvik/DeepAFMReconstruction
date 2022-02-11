@@ -16,6 +16,17 @@ def normalize(img):
         return (img - np.min(img)) / (np.max(img) - np.min(img))
 
 
+def subtract_mean_plane(img):
+    x, y = np.mgrid[:img.shape[0], :img.shape[1]]
+
+    X = np.column_stack([x.ravel(), y.ravel(), np.ones(img.shape[0] * img.shape[1])])
+    H = img.ravel()
+
+    theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X.transpose()), H)
+    plane = np.reshape(np.dot(X, theta), (img.shape[0], img.shape[1]))
+
+    return img - plane
+
 def normalize_joint(imgs):
     joint = np.stack(imgs, axis=0)
     max = np.max(joint)
@@ -100,6 +111,7 @@ def load_tips_from_pkl(pkl_path):
 if __name__ == '__main__':
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
     img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Neno/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy')
+    img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalNew/loga/loga_0deg_220126_155543.gwy')
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalSlow/kremik_5x5_t-d_0deg_slow.gwy')
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalSlow/kremik_5x5_t-d_0deg.gwy')
 
@@ -119,6 +131,7 @@ if __name__ == '__main__':
 
         cv2.imshow("img_l_td", disp_l)
         cv2.imshow("img_r_td", disp_r)
+        cv2.imshow("img_r_td_plane", normalize(subtract_mean_plane(img_l)))
         cv2.waitKey(0)
 
 

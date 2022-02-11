@@ -14,7 +14,8 @@ from PIL import Image
 from eval.registration import register_affine_orb, register_rigid_sitk, resample_images
 from network.train import load_model
 from network.unet import ResUnet
-from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize
+from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize, \
+    subtract_mean_plane
 
 
 def parse_command_line():
@@ -25,6 +26,7 @@ def parse_command_line():
     parser.add_argument('-ai', '--aligned_images', action='store_true', default=False)
     parser.add_argument('-s', '--smooth', action='store_true', default=False)
     parser.add_argument('-m', '--median', action='store_true', default=False)
+    parser.add_argument('-l', '--level', action='store_true', default=False)
     parser.add_argument('-t', '--threshold', type=float, default=0.01)
     parser.add_argument('-nw', '--num_workers', type=int, default=6)
     parser.add_argument('model_path')
@@ -142,7 +144,7 @@ def eval_same_sample(entries, num_workers=6):
     return results
 
 
-def inference(model, entries):
+def inference(model, entries, level=False):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
@@ -154,12 +156,16 @@ def inference(model, entries):
         # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
         nn_input = torch.from_numpy(np.stack([img_l_normalized, img_r_normalized], axis=0)[None, ...]).float().cuda()
         img_nn = model(nn_input).detach().cpu().numpy()[0, 0, ...]
-        entry['img_out_normalized'] = img_nn
-        entry['img_out'] = denormalize(img_nn, [img_l, img_r])
+        if level:
+            entry['img_out'] = subtract_mean_plane(denormalize(img_nn, [img_l, img_r]))
+            entry['img_out_normalized'] = normalize(subtract_mean_plane(img_nn))
+        else:
+            entry['img_out_normalized'] = img_nn
+            entry['img_out'] = denormalize(img_nn, [img_l, img_r])
     return entries
 
 
-def apply_baseline(entries, smooth=False, median=False, threshold=0.1):
+def apply_baseline(entries, smooth=False, median=False, threshold=0.1, level=False):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
@@ -173,7 +179,11 @@ def apply_baseline(entries, smooth=False, median=False, threshold=0.1):
             img_baseline = cv2.GaussianBlur(img_baseline, (5, 5), 0)
         if median:
             img_baseline = cv2.medianBlur(img_baseline, 5)
-        entry['img_out'] = denormalize(img_baseline, [img_l, img_r])
+
+        if level:
+            entry['img_out'] = subtract_mean_plane(denormalize(img_baseline, [img_l, img_r]))
+        else:
+            entry['img_out'] = denormalize(img_baseline, [img_l, img_r])
     return entries
 
 
@@ -237,7 +247,7 @@ def main(args):
         list_of_entries.append(entries)
 
     if args.model_path == 'baseline':
-        list_of_entries = [apply_baseline(entries, args.smooth, args.median, threshold=args.threshold) for entries in list_of_entries]
+        list_of_entries = [apply_baseline(entries, args.smooth, args.median, threshold=args.threshold, level=args.level) for entries in list_of_entries]
         model_basename = 'baseline_{}'.format(args.threshold)
         if args.smooth:
             model_basename += '_smooth'
@@ -249,7 +259,10 @@ def main(args):
         model_basename = os.path.basename(args.model_path).split('.')[0]
         model.load_state_dict(torch.load(args.model_path))
         model.eval()
-        list_of_entries = [inference(model, entries) for entries in list_of_entries]
+        list_of_entries = [inference(model, entries, level=args.level) for entries in list_of_entries]
+
+    if args.level:
+        model_basename += '_level'
 
     if args.images:
         output_images(list_of_entries, model_basename)
