@@ -6,7 +6,7 @@ import numpy as np
 
 from synth.generator import generate_grid_structure
 from synth.tip_dilation import dilate, fast_dilate
-from utils.image import load_tips_from_pkl, normalize
+from utils.image import load_tips_from_pkl, normalize, subtract_mean_plane_both
 
 
 def add_shadow_artifacts(image, deg_start, direction=True, deg_spread=5):
@@ -146,7 +146,9 @@ class Artifactor():
 
             # x-correlated noise params
             'noise_prob': 0.8, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
-            'noise_sigma_max': 0.1}
+            'noise_sigma_max': 0.1,
+
+            'subtract_mean_plane': 1.0}
         return default_params
 
     def add_overshoot(self, image, flip=False):
@@ -213,6 +215,9 @@ class Artifactor():
         if np.random.rand() < self.noise_prob:
             img_l = self.add_noise(img_l)
             img_r = self.add_noise(img_r, flip=True)
+
+        if self.subtract_mean_plane:
+            img_l, img_r = subtract_mean_plane_both(img_l, img_r)
 
         return img_l, img_r
 
