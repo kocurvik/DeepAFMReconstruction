@@ -27,6 +27,21 @@ def subtract_mean_plane(img):
 
     return img - plane
 
+
+def subtract_mean_plane_both(img_l, img_r):
+    x, y = np.mgrid[:img_l.shape[0], :img_l.shape[1]]
+    X = np.column_stack([x.ravel(), y.ravel(), np.ones(img_l.shape[0] * img_l.shape[1])])
+    X = np.concatenate([X, X], axis=0)
+    H = np.concatenate([img_l.ravel(), img_r.ravel()], axis=0)
+
+    theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X.transpose()), H)
+    plane = np.reshape(np.dot(X, theta), (2 * img_l.shape[0], img_r.shape[1]))
+
+    plane = plane[:img_l.shape[0], :]
+
+    return img_l - plane, img_r - plane
+
+
 def normalize_joint(imgs):
     joint = np.stack(imgs, axis=0)
     max = np.max(joint)

@@ -15,7 +15,7 @@ from eval.registration import register_affine_orb, register_rigid_sitk, resample
 from network.train import load_model
 from network.unet import ResUnet
 from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize, \
-    subtract_mean_plane
+    subtract_mean_plane, subtract_mean_plane_both
 
 
 def parse_command_line():
@@ -24,7 +24,8 @@ def parse_command_line():
     parser.add_argument('-e', '--eval', action='store_true', default=False)
     parser.add_argument('-i', '--images', action='store_true', default=False)
     parser.add_argument('-ai', '--aligned_images', action='store_true', default=False)
-    parser.add_argument('-s', '--smooth', action='store_true', default=False)
+    parser.add_argument('-g', '--gauss', action='store_true', default=False)
+    parser.add_argument('-a', '--average', action='store_true', default=False)
     parser.add_argument('-m', '--median', action='store_true', default=False)
     parser.add_argument('-l', '--level', action='store_true', default=False)
     parser.add_argument('-t', '--threshold', type=float, default=0.01)
@@ -152,6 +153,9 @@ def inference(model, entries, level=False):
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
+        if level:
+            img_l, img_r = subtract_mean_plane_both(img_l, img_r)
+
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
         # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
         nn_input = torch.from_numpy(np.stack([img_l_normalized, img_r_normalized], axis=0)[None, ...]).float().cuda()
@@ -165,7 +169,7 @@ def inference(model, entries, level=False):
     return entries
 
 
-def apply_baseline(entries, smooth=False, median=False, threshold=0.1, level=False):
+def apply_baseline(entries, gauss=False, average=False, median=False, threshold=0.1, level=False):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
@@ -175,8 +179,10 @@ def apply_baseline(entries, smooth=False, median=False, threshold=0.1, level=Fal
 
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
         img_baseline = normalize(baseline_lr_filtering(img_l_normalized, img_r_normalized, threshold=threshold))
-        if smooth:
+        if gauss:
             img_baseline = cv2.GaussianBlur(img_baseline, (5, 5), 0)
+        if average:
+            img_baseline = cv2.blur(img_baseline, (5, 5))
         if median:
             img_baseline = cv2.medianBlur(img_baseline, 5)
 
@@ -199,7 +205,7 @@ def compose_images(images):
     return img_new
 
 
-def output_images(list_of_entries, model_basename):
+def output_images(list_of_entries, model_basename, data_dirname):
     pdf_imgs = []
     for entries in list_of_entries:
         for entry in entries:
@@ -208,10 +214,10 @@ def output_images(list_of_entries, model_basename):
 
             pdf_imgs.append(img_new)
 
-    pdf_imgs[0].save("vis/images_{}.pdf".format(model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
+    pdf_imgs[0].save("vis/{}_{}.pdf".format(data_dirname, model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
 
 
-def output_aligned_images(list_of_entries, model_basename):
+def output_aligned_images(list_of_entries, model_basename, data_dirname):
     pdf_imgs = []
     for entries in list_of_entries:
         entry_first = entries[0]
@@ -230,7 +236,7 @@ def output_aligned_images(list_of_entries, model_basename):
 
             pdf_imgs.append(compose_images(images))
 
-    pdf_imgs[0].save("vis/aligned_{}.pdf".format(model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
+    pdf_imgs[0].save("vis/aligned_{}_{}.pdf".format(data_dirname, model_basename), "PDF", resolution=100.0, save_all=True, append_images=pdf_imgs[1:])
 
 
 def main(args):
@@ -247,10 +253,12 @@ def main(args):
         list_of_entries.append(entries)
 
     if args.model_path == 'baseline':
-        list_of_entries = [apply_baseline(entries, args.smooth, args.median, threshold=args.threshold, level=args.level) for entries in list_of_entries]
+        list_of_entries = [apply_baseline(entries, args.gauss, args.average, args.median, threshold=args.threshold, level=args.level) for entries in list_of_entries]
         model_basename = 'baseline_{}'.format(args.threshold)
-        if args.smooth:
-            model_basename += '_smooth'
+        if args.gauss:
+            model_basename += '_gauss'
+        if args.average:
+            model_basename += '_average'
         if args.median:
             model_basename += '_median'
     else:
@@ -264,11 +272,15 @@ def main(args):
     if args.level:
         model_basename += '_level'
 
+    print("Model basename: " + model_basename)
+
+    data_dirname = os.path.basename(os.path.normpath(args.data_path))
+
     if args.images:
-        output_images(list_of_entries, model_basename)
+        output_images(list_of_entries, model_basename, data_dirname)
 
     if args.aligned_images:
-        output_aligned_images(list_of_entries, model_basename)
+        output_aligned_images(list_of_entries, model_basename, data_dirname)
 
     if args.eval:
         list_of_results = []
