@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from synth.artifacts import Artifactor
 from synth.synthetizer import Synthesizer
-from utils.image import normalize_joint
+from utils.image import normalize_joint, subtract_mean_plane_both
 
 
 class OnlineDataset(torch.utils.data.Dataset):
@@ -39,6 +39,8 @@ class PregeneratedDataset(torch.utils.data.Dataset):
         self.split = split
         self.split_path = os.path.join(path, "{}.npy".format(split))
 
+        self.subtract_mean_plane = False
+
         json_path = os.path.join(path, "{}.json".format(split))
         print("Data without artifacts loading config from: ", json_path)
         with open(json_path, 'r') as f:
@@ -53,6 +55,8 @@ class PregeneratedDataset(torch.utils.data.Dataset):
             self.apply_artifacts = True
             self.artifactor = Artifactor(**json_dict["synthetizer_params"])
             self.entries = np.load(self.split_path)
+            if json_dict['args']['subtract_mean_plane']:
+                self.subtract_mean_plane = True
             print("Artifacts will be applied on the run")
 
 
@@ -73,6 +77,9 @@ class PregeneratedDataset(torch.utils.data.Dataset):
             image_dil = self.entries[index, 0]
             image_gt = self.entries[index, 1]
             image_l, image_r = self.artifactor.apply(image_dil)
+            if self.subtract_mean_plane:
+                image_l, image_r, plane = subtract_mean_plane_both(image_l, image_r,return_plane=True)
+                image_gt -= plane
             images = normalize_joint([image_l, image_r, image_gt])
             entry = torch.from_numpy(np.stack(images, axis=0).astype(np.float32))
         else:
@@ -85,7 +92,7 @@ class PregeneratedDataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    path = 'D:/Research/data/GEFSEM/synth/generated/8222b2450cede61d7d15ae91cb0102ac69a2958b/'
+    path = 'D:/Research/data/GEFSEM/synth/generated/555e6565715b5fd76a38f56c7fbf2098ab3e69a3/'
     dataset = OnlineDataset(path)
     # dataset.artifactor.shadows_prob = 1.0
     # dataset.artifactor.overshoot_prob = 0.0

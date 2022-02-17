@@ -16,7 +16,7 @@ def normalize(img):
         return (img - np.min(img)) / (np.max(img) - np.min(img))
 
 
-def subtract_mean_plane(img):
+def subtract_mean_plane(img, return_plane=False):
     x, y = np.mgrid[:img.shape[0], :img.shape[1]]
 
     X = np.column_stack([x.ravel(), y.ravel(), np.ones(img.shape[0] * img.shape[1])])
@@ -25,10 +25,12 @@ def subtract_mean_plane(img):
     theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X.transpose()), H)
     plane = np.reshape(np.dot(X, theta), (img.shape[0], img.shape[1]))
 
+    if return_plane:
+        return img - plane, plane
     return img - plane
 
 
-def subtract_mean_plane_both(img_l, img_r):
+def subtract_mean_plane_both(img_l, img_r, return_plane=False):
     x, y = np.mgrid[:img_l.shape[0], :img_l.shape[1]]
     X = np.column_stack([x.ravel(), y.ravel(), np.ones(img_l.shape[0] * img_l.shape[1])])
     X = np.concatenate([X, X], axis=0)
@@ -39,6 +41,8 @@ def subtract_mean_plane_both(img_l, img_r):
 
     plane = plane[:img_l.shape[0], :]
 
+    if return_plane:
+        return img_l - plane, img_r - plane, plane
     return img_l - plane, img_r - plane
 
 
