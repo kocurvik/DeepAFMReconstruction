@@ -9,6 +9,7 @@ from scipy import ndimage
 
 
 def normalize(img):
+    # Normalize image to range [0, 1]
     img = img.astype(np.float32)
     if img.max() == img.min():
         return img
@@ -17,6 +18,7 @@ def normalize(img):
 
 
 def subtract_mean_plane(img, return_plane=False):
+    # Subtract mean plane from single image
     x, y = np.mgrid[:img.shape[0], :img.shape[1]]
 
     X = np.column_stack([x.ravel(), y.ravel(), np.ones(img.shape[0] * img.shape[1])])
@@ -31,6 +33,7 @@ def subtract_mean_plane(img, return_plane=False):
 
 
 def subtract_mean_plane_both(img_l, img_r, return_plane=False):
+    # Subtract mean plane from two images. The mean plane is calculated for both images simultaneously
     x, y = np.mgrid[:img_l.shape[0], :img_l.shape[1]]
     X = np.column_stack([x.ravel(), y.ravel(), np.ones(img_l.shape[0] * img_l.shape[1])])
     X = np.concatenate([X, X], axis=0)
@@ -47,6 +50,7 @@ def subtract_mean_plane_both(img_l, img_r, return_plane=False):
 
 
 def normalize_joint(imgs):
+    # Normalize a list of images so that the min value is 0 and max value is 1
     joint = np.stack(imgs, axis=0)
     max = np.max(joint)
     min = np.min(joint)
@@ -62,6 +66,7 @@ def normalize_joint(imgs):
 
 
 def denormalize(img, orig_imgs):
+    # Reverse normalization of img based on min and max values of orig_imgs
     joint_orig = np.stack(orig_imgs, axis=0)
     max = np.max(joint_orig)
     min = np.min(joint_orig)
@@ -70,6 +75,8 @@ def denormalize(img, orig_imgs):
 
 
 def remove_offset_lr(img_l, img_r, max_offset=64):
+    # Align two images img_l and img_r so that they overlap the best w.r.t. mutual MSE, then crop the images so only
+    # the overlapped area remains
     mses = np.zeros(max_offset)
     max_width = img_l.shape[1]
     for offset in range(max_offset):
@@ -82,6 +89,8 @@ def remove_offset_lr(img_l, img_r, max_offset=64):
 
 
 def enforce_img_size_for_nn(img_1, img_2, dim=8):
+    # Make sure that the dimensions of the image can be passed to the NN
+    # E.g. dims of img_1 and img_2 have to be divisible by dim)
     min_height = (min(img_1.shape[0], img_2.shape[0]) // dim) * dim
     min_width = (min(img_1.shape[1], img_2.shape[1]) // dim) * dim
 
@@ -91,6 +100,7 @@ def enforce_img_size_for_nn(img_1, img_2, dim=8):
 
 
 def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enforce_nn=True):
+    # Load the left and right topography images from a .gwy file. Additional args enable the use of more postprocessing
     obj = gwyfile.load(gwy_path)
     channels = gwyfile.util.get_datafields(obj)
 
@@ -118,16 +128,20 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
 
 
 def rotate(image, deg):
+    # Rotate image by deg degrees
     return ndimage.rotate(image, deg, reshape=True)
 
 
 def load_tips_from_pkl(pkl_path):
+    # Load tip topographies from a pkl file
     with open(pkl_path, 'rb') as f:
         tips = pickle.load(f)
         tips = tips[list(tips.keys())[0]]
     return tips
 
 if __name__ == '__main__':
+    # Some code to visually check the implemented methods
+
     # img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Tescan sample/4x4_l-r_+90deg_210908_145519.gwy')
     img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalData/Neno/Neno_r-l_45deg_0deg-scanner_210330_143917.gwy')
     img_l, img_r = load_lr_img_from_gwy('D:/Research/data/GEFSEM/EvalNew/loga/loga_0deg_220126_155543.gwy')

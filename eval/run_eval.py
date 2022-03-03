@@ -11,7 +11,7 @@ import scipy
 import torch
 from PIL import Image
 
-from eval.registration import register_affine_orb, register_rigid_sitk, resample_images
+from eval.registration import register_rigid_sitk, resample_images
 from network.train import load_model
 from network.unet import ResUnet
 from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize, \
@@ -21,17 +21,17 @@ from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--eval', action='store_true', default=False)
-    parser.add_argument('-i', '--images', action='store_true', default=False)
-    parser.add_argument('-ai', '--aligned_images', action='store_true', default=False)
-    parser.add_argument('-g', '--gauss', action='store_true', default=False)
-    parser.add_argument('-a', '--average', action='store_true', default=False)
-    parser.add_argument('-m', '--median', action='store_true', default=False)
-    parser.add_argument('-l', '--level', action='store_true', default=False)
-    parser.add_argument('-t', '--threshold', type=float, default=0.01)
-    parser.add_argument('-nw', '--num_workers', type=int, default=6)
-    parser.add_argument('model_path')
-    parser.add_argument('data_path')
+    parser.add_argument('-e', '--eval', action='store_true', default=False, help='Whether to run evaluation')
+    parser.add_argument('-i', '--images', action='store_true', default=False, help='Whether to output the output images to a pdf')
+    parser.add_argument('-ai', '--aligned_images', action='store_true', default=False, help='Whether to generate a pdf with aligned images')
+    parser.add_argument('-g', '--gauss', action='store_true', default=False, help='Whether to apply the Gaussian filter if the baseline is used')
+    parser.add_argument('-a', '--average', action='store_true', default=False, help='Whether to apply the average filter if the baseline is used')
+    parser.add_argument('-m', '--median', action='store_true', default=False, help='Whether to apply the median filter if the baseline is used')
+    parser.add_argument('-l', '--level', action='store_true', default=False, help='Whether to subtract the mean plane before and after inference')
+    parser.add_argument('-t', '--threshold', type=float, default=0.01, help='Threshold for the baseline method')
+    parser.add_argument('-nw', '--num_workers', type=int, default=6, help='Number of workers for multiprocessing')
+    parser.add_argument('model_path', help='Path to the .pth model, alternatively use baseline to run the baseline model')
+    parser.add_argument('data_path', help='Path to a folder containing the dataset with json files generated using eval/annotator.py')
     args = parser.parse_args()
     return args
 

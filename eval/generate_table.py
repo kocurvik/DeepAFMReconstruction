@@ -4,19 +4,23 @@ import os
 
 import numpy as np
 
+DIRNAME_DICT = {'d008': 'Wafers', 'D010_Bunky': 'Cells', 'INCHAR (MFM sample)': 'Permalloy', 'Kremik': 'Silicon',
+                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3'}
+
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('data_path')
+    parser.add_argument('data_path', help='Path to the output of the run_eval.py file')
     args = parser.parse_args()
     return args
 
 
 def generate_table(data_path):
+    # Generates tables from the paper
     json_paths = [x for x in os.listdir(data_path) if '.json' in x]
     all_results = {}
     for json_path in json_paths:
-        model_name = json_path.split('.')[0]
+        model_name = json_path.split('_results')[0]
         with open(os.path.join(data_path, json_path), 'r') as f:
             all_results[model_name] = json.load(f)
 
@@ -37,12 +41,13 @@ def generate_table(data_path):
             # print("mse - mean: {} \t median: {}".format(np.mean(mse), np.median(mse)))
 
     dirs = [all_results[model_name][i]['dir'] for i in range(len(all_results[model_name]))]
+    dir_names = [DIRNAME_DICT[d] for d in dirs]
     for metric in ['rmse', 'rcorrelation']:
         for statistic in ['Mean', 'Median']:
             print(20 * '*')
             print(metric + ' + ' + statistic)
             print(20 * '*')
-            topline = 'Model & ' + ' & '.join(dirs) + '\\\\ \\hline'
+            topline = 'Model & ' + ' & '.join(dir_names) + '\\\\ \\hline'
             print(topline)
             for model, list_of_results in all_results.items():
                 vals = []
@@ -55,16 +60,13 @@ def generate_table(data_path):
                         val = '{:.4f}'.format(np.mean(val))
                     else:
                         val = '{:.4f}'.format(np.median(val))
-                    if model == 'ResUNet':
-                        val = '\\textbf{{' + val + '}}'
+                    # if 'baseline' not in model:
+                    #     val = '\\textbf{' + val + '}'
 
                     vals.append(val)
 
-                line = model + ' & ' + ' & '.join(vals) + '\\\\ \\hline'
+                line = model + (30 - len(model))*' ' + '& ' + ' & '.join(vals) + '\\\\ \\hline'
                 print(line)
-
-
-
 
 
 if __name__ == '__main__':

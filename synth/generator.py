@@ -46,6 +46,7 @@ def generate_grid_structure(width=128, height=128):
 
 
 class GridGenerator:
+    # Older generator used for testing
     def __init__(self, **kwargs):
         for (prop, default) in GridGenerator.get_default_param_dict().items():
             setattr(self, prop, kwargs.get(prop, default))
@@ -58,14 +59,9 @@ class GridGenerator:
     def generate(self):
         return generate_grid_structure(self.resolution, self.resolution)
 
-# if __name__ == '__main__':
-#     for i in range(100):
-#         canvas = generate_grid_structure(128, 128)
-#         cv2.imshow("Canvas", canvas / np.max(canvas))
-#         cv2.waitKey(0)
-
 
 def apply_linear_f(x, min_t, max_t):
+    # Thresholding function
     if min_t > max_t:
         return np.where(x < min_t, 0.0, 1.0)
     else:
@@ -75,6 +71,8 @@ def apply_linear_f(x, min_t, max_t):
         return x
 
 class FFTGenerator:
+    # Generator based on FFT as described in the article
+    # Params mostly determine the distributions which are used during generation
     def __init__(self, **kwargs):
         for (prop, default) in FFTGenerator.get_default_param_dict().items():
             setattr(self, prop, kwargs.get(prop, default))
@@ -103,7 +101,6 @@ class FFTGenerator:
         canvas = normalize(np.abs(np.fft.ifft2(ifft_canvas)))
 
         return canvas
-
 
     def generate(self):
         num_noises = min(np.random.zipf(self.num_noises_zipf_a), 20)

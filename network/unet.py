@@ -7,6 +7,8 @@ from network.unet_modules import ResidualConv, ASPP, AttentionBlock, Upsample_, 
 
 
 class ResUnet(nn.Module):
+    # The base ResUnet class from https://github.com/rishikksh20/ResUnet
+
     def __init__(self, channel, filters=[64, 128, 256, 512]):
         super(ResUnet, self).__init__()
 

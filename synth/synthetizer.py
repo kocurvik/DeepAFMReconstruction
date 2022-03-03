@@ -146,17 +146,20 @@ def parse_command_line():
     for k, v in default_params.items():
         parser.add_argument('--{}'.format(k), type=float, default=v)
 
-    parser.add_argument('-n', '--num_items', type=int, default=1000)
-    parser.add_argument('-nw', '--num_workers', type=int, default=1)
-    parser.add_argument('-s', '--subset', type=str, default='train')
-    parser.add_argument('-aa', '--apply_artifacts', action='store_true', default=False)
-    parser.add_argument('tips_path', type=str)
-    parser.add_argument('out_path', type=str)
+    parser.add_argument('-n', '--num_items', type=int, default=1000, help='Number of items to generate')
+    parser.add_argument('-nw', '--num_workers', type=int, default=1, help='Number of workers to be used in multiprocessing')
+    parser.add_argument('-s', '--subset', type=str, default='train', help='Subset - train/val/test')
+    parser.add_argument('-aa', '--apply_artifacts', action='store_true', default=False, help='Whether to apply artifacts, if they are not applied this allows for them to be applied on the fly')
+    parser.add_argument('tips_path', type=str, help='Path to the pickle of the tips')
+    parser.add_argument('out_path', type=str, help='Path where a new folder containing the dataset will be generated')
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
+    # This generates a dataset json and npy file. In the final version only
+    # The parser has multiple parameters which can be seen in the Artifactor, FastTipDilator and FFTGenerator objects.
+    # Example usage: python synth/synthetizer.py -n 5000 -nw 8 -s val -aa --shadows_prob 1.0 --overshoot_prob 0.0 --noise_prob 0.5 /path/to/tips.pkl /path/where/dataset/will/be/generated/
     args = parse_command_line()
     syn = Synthesizer(**vars(args))
     entries = generate_dataset(syn, num_items=args.num_items, num_workers=args.num_workers, apply_artifacts=args.apply_artifacts)

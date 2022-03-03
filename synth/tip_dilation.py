@@ -9,7 +9,7 @@ def dilate(image, kernel):
     Dilates image by kernel
     :param image:
     :param kernel:
-    :return:
+    :return: dilated image
     """
     image_height = np.shape(image)[0]
     image_width = np.shape(image)[1]
@@ -38,6 +38,7 @@ def dilate(image, kernel):
 
 
 def fast_dilate(image, kernel):
+    # Unused faster version which is only beneficial with simpler topographies.
     image_height = image.shape[0]
     image_width = image.shape[1]
 

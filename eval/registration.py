@@ -11,44 +11,6 @@ from utils.image import normalize
 #   reg.register()
 
 
-def register_affine_orb(img_1, img_2, max_features=100):
-    orb = cv2.ORB_create(max_features)
-
-    (kpsA, descsA) = orb.detectAndCompute((255 * img_1).astype(np.uint8), None)
-    (kpsB, descsB) = orb.detectAndCompute((255 * img_2).astype(np.uint8), None)
-
-    bf = cv2.BFMatcher()
-    matches = bf.knnMatch(descsA, descsB, k=2)
-
-    # Apply ratio test
-    good = []
-    for m, n in matches:
-        if m.distance < 0.75 * n.distance:
-            good.append([m])
-
-    # matches = sorted(matches, key=lambda x: x.distance)
-
-    # match_img = cv2.drawMatches(img_1, kpsA, img_2, kpsB, matches, None, flags=2)
-    # cv2.imshow("Matches", match_img)
-    # cv2.waitKey(0)
-
-    if len(good) < 6:
-        return None
-
-    pts_1 = np.zeros((len(good), 2), dtype="float")
-    pts_2 = np.zeros((len(good), 2), dtype="float")
-    for (i, match) in enumerate(good):
-        pts_1[i] = kpsA[match[0].queryIdx].pt
-        pts_2[i] = kpsB[match[0].trainIdx].pt
-
-    affine_matrix, mask = cv2.estimateAffinePartial2D(pts_1, pts_2)
-
-    if np.abs(np.linalg.det(affine_matrix[:2, :2])) < 0.5:
-        affine_matrix = None
-
-    return affine_matrix
-
-
 def command_iteration(method):
     if (method.GetOptimizerIteration() == 0):
         print("Estimated Scales: ", method.GetOptimizerScales())
@@ -56,6 +18,7 @@ def command_iteration(method):
 
 
 def register_rigid_sitk(img_1, img_2, interpolator='linear', metric='mse', p1=None, p2=None, nOfBins=50, MMISamplingPercentage=0.5, verbose=True):
+    # Registers the two images using SITK, p1 and p2 are keypoints in two images.
     img_1 = sitk.GetImageFromArray(img_1)
     img_2 = sitk.GetImageFromArray(img_2)
 
@@ -119,6 +82,8 @@ def register_rigid_sitk(img_1, img_2, interpolator='linear', metric='mse', p1=No
 
 
 def resample_images(img_1, img_2, transform):
+    # Transform img_2 to img_1 given a transform
+    # Also outputs a combined image
     if img_1.dtype == np.float32:
         img_1 = (255 * img_1).astype(np.uint8)
     if img_2.dtype == np.float32:

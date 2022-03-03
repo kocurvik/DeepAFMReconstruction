@@ -1,3 +1,4 @@
+import argparse
 import os
 import pickle
 
@@ -7,7 +8,17 @@ import numpy as np
 from utils.image import load_lr_img_from_gwy, normalize, enforce_img_size_for_nn
 
 
+def parse_command_line():
+    """ Parser used for training and inference returns args. Sets up GPUs."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-m', '--manual_offset', action='store_true', default=False, help='Whether the offset needs to be set manually')
+    parser.add_argument('data_path', help='Path to the dataset folder containing multiple gwy files of the same sample')
+    args = parser.parse_args()
+    return args
+
+
 def annotate_entries(entries):
+    # Annotate the images by selecting the same keypoint in all images
     for i, entry in enumerate(entries):
 
         print("Entry filename: ", entry['filename'])
@@ -38,6 +49,9 @@ def annotate_entries(entries):
 
 
 def set_manual_offset(img_l, img_r):
+    # Set manual offset for img_l and img_r when alignment via simple MSE fails.
+    # Controlled by key presses: t and v control contrast, k and s control the offset,
+    # c continues to next image and saves offset
     offset = 0
     gamma = 1
 
@@ -69,6 +83,7 @@ def set_manual_offset(img_l, img_r):
 
 
 def extract_eval_data(path, manual_offset=False):
+    # Loads gwy data from a folder
     filenames = os.listdir(path)
     filenames = [f for f in filenames if '.gwy' in f and 'tip' not in f and 'bad' not in f]
 
@@ -95,8 +110,8 @@ def save_entries(entries, path):
 
 
 if __name__ == '__main__':
-    # path = 'D:/Research/data/GEFSEM/2021-04-07 - Dataset/Neno'
-    path = 'D:/Research/data/GEFSEM/EvalData/Kremik'
-    entries = extract_eval_data(path, manual_offset=True)
+    args = parse_command_line()
+
+    entries = extract_eval_data(args.data_path, manual_offset=args.manual_offset)
     annotate_entries(entries)
-    save_entries(entries, path)
+    save_entries(entries, args.data_path)

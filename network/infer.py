@@ -11,14 +11,15 @@ from network.unet import ResUnet
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--subset', type=str, default='val')
-    parser.add_argument('model_path')
-    parser.add_argument('data_path')
+    parser.add_argument('-s', '--subset', type=str, default='val', help='Which subset of the dataset to use')
+    parser.add_argument('model_path', help='Path to the model .pth file')
+    parser.add_argument('data_path', help='Path to the dataset folder containing the json and npy files')
     args = parser.parse_args()
     return args
 
 
 def infer(args):
+    # Show the results on a dataset provided.
     model = ResUnet(2).cuda()
     print("Resuming from: ", args.model_path)
     model.load_state_dict(torch.load(args.model_path))

@@ -41,7 +41,7 @@ def parse_command_line():
 
 
 def load_model(args):
-    """ Loads model. If args.resum is None weights for the backbone are pre-trained on ImageNet, otherwise previous
+    """ Loads model. If args.resume is None weights for the backbone are pre-trained on ImageNet, otherwise previous
     checkpoint is loaded """
 
     data_dir_name = os.path.basename(os.path.normpath(args.path))
@@ -58,6 +58,7 @@ def load_model(args):
 
 
 def train(args):
+    # Training script, check the parser help for more details
     model, save_dir = load_model(args)
 
     train_dataset = OnlineDataset(args.path, num_items=25000)

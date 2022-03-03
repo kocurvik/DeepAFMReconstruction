@@ -14,6 +14,8 @@ from utils.image import normalize_joint, subtract_mean_plane_both
 
 class OnlineDataset(torch.utils.data.Dataset):
     def __init__(self, path, num_items=25000):
+        # Dataset which generates data on the fly
+        # The dataset params are stored in a json file
         json_path = os.path.join(path, "{}.json".format('val'))
         print("Loading config from val data: ", json_path)
         with open(json_path, 'r') as f:
@@ -36,6 +38,9 @@ class OnlineDataset(torch.utils.data.Dataset):
 
 class PregeneratedDataset(torch.utils.data.Dataset):
     def __init__(self, path, split):
+        # Dataset for validation. The data is pregenerated
+        # Includes option to add some of the artifacts and noise on the fly, which are added based on a json file
+
         self.split = split
         self.split_path = os.path.join(path, "{}.npy".format(split))
 

@@ -93,38 +93,6 @@ def add_parabolic_skew(img, sigma_a=0.2, sigma_b=0.2):
     return img + a * (mg_x - c_x) ** 2 + b * (mg_y - c_y) ** 2
 
 
-if __name__ == '__main__':
-    tips_path = 'D:/Research/data/GEFSEM/synth/res/tips.pkl'
-    tips = load_tips_from_pkl(tips_path)
-    tips_keys = list(tips.keys())
-
-    tips_array = np.array([tips[k]['data'] for k in tips_keys])
-
-    m_tips = np.max(tips_array, axis=(-1, -2))
-
-    images = []
-    tips_generated = []
-
-    for i in range(100):
-        tip = np.random.choice(tips_keys)
-        rot = np.random.randint(0, 3)
-        tip_scaled = normalize(tips[tip]['data'])[:20, :]
-
-        image = generate_grid_structure(256, 256)
-
-        images.append(image)
-        tips_generated.append(tip)
-
-    start_time = time.time()
-    for image, tip in zip(images, tips_generated):
-        fast_dil_image = fast_dilate(image, tip_scaled)
-        dil_image = dilate(image, tip_scaled)
-
-        print(np.sum(np.abs(fast_dil_image - dil_image)))
-
-
-
-
 class Artifactor():
     def __init__(self, **kwargs):
         for (prop, default) in Artifactor.get_default_param_dict().items():
