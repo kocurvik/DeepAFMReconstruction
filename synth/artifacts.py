@@ -102,14 +102,14 @@ class Artifactor():
     def get_default_param_dict():
         default_params = {
             # skew params
-            'linear_skew_sigma': 0.1, 'parabolic_skew_sigma': 0.1, 'skew_prob': 0.25,
+            'linear_skew_sigma': 0.1, 'parabolic_skew_sigma': 0.1, 'skew_prob': 0.5,
 
             # overshoot params
-            'overshoot_prob': 0.5, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.2, 'min_p_keep': 0.0,
+            'overshoot_prob': 0.7, 'max_overshoot_t': 0.5, 'max_overshoot_mag': 0.2, 'min_p_keep': 0.0,
             'max_p_keep': 0.9, 'min_weaken_factor': 0.0, 'max_weaken_factor': 0.5,
 
             # shadows params
-            'shadows_prob': 0.5, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
+            'shadows_prob': 0.8, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
             'shadows_max': 1.5, 'shadows_max_randomize_percentage': 0.3,
 
             # x-correlated noise params
