@@ -37,6 +37,16 @@ You can omit or change the -nw 6 argument to change the number of workers to fit
 Afterwards you can generate a table by running:
 
     python eval/generate_table.py path/to/downloaded/EvalData
+
+## Running on gwy files
+ You can also run the model on individual gwy files. 
+ 
+
+    python run_on_gwy.py /path/to/model.pth /path/to/gwy/file.gwy
+You can also use the `-m` option to perform manual offset selection. 
+
+The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be save to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
+
 ## Training
 If you want to train the network you will have to follow these steps:
 ### Generating the dataset
@@ -66,11 +76,3 @@ You will have to select and click on the keypoints in the first image. Then you 
 You can use the `-m` option to run manual alignment of left-to-right and right-to-left scans if the simple MSE method does not work. If you do this you will need to manually align the images. You can use the keyboard controls: t and v control contrast, k and s control the offset, c continues to next image and saves offset.
 
 This should create a json file which can be used in the validation script (as discussed above).
-### Running on gwy files
- You can also run the model on individual gwy files. 
- 
-
-    python run_on_gwy.py /path/to/model.pth /path/to/gwy/file.gwy
-You can also use the `-m` option to perform manual offset selection. 
-
-The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be save to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
