@@ -45,7 +45,7 @@ Afterwards you can generate a table by running:
     python run_on_gwy.py /path/to/model.pth /path/to/gwy/file.gwy
 You can also use the `-m` option to perform manual offset selection. 
 
-The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be save to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
+The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be saved to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
 
 ## Training
 If you want to train the network you will have to follow these steps:
