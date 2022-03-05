@@ -57,7 +57,7 @@ You can change the parameters. Especially the batch size and number of epochs. C
     python network/train.py -b 16 -o adam -exp 2 -expr 1 -r 19 -e 30 -de 1 -lr 1e-5 -wd 1e-2 -nw 6 -g 0 /path/where/you/want/dataset/555e6565715b5fd76a38f56c7fbf2098ab3e69a3/
 The model files for every checkpoint will appear in the `checkpoints/555e6565715b5fd76a38f56c7fbf2098ab3e69a3/expnum` folder. You can rename them for evaluation.
 
-### Creating your own annotated keypoints
+### Creating your own annotated keypoints for evaluation
 You may also want to create your own keypoints. You can use the annotator for this purpose.
 
     python eval/annotator.py path/to/folder/with/gwy/files
