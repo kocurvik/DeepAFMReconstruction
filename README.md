@@ -67,4 +67,10 @@ You can use the `-m` option to run manual alignment of left-to-right and right-t
 
 This should create a json file which can be used in the validation script (as discussed above).
 ### Running on gwy files
-TBA
+ You can also run the model on individual gwy files. 
+ 
+
+    python run_on_gwy.py /path/to/model.pth /path/to/gwy/file.gwy
+You can also use the `-m` option to perform manual offset selection. 
+
+The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be save to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
