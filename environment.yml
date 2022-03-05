@@ -1,0 +1,23 @@
+name: gefsem
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - scipy
+  - opencv
+  - matplotlib
+  - torchaudio
+  - cudatoolkit=11.1
+  - torchvision
+  - pytorch
+  - pytorch-lightning
+  - simpleitk
+  - scikit-image
+  - cmapy
+  - gwyfile
+  - pyzmq
+  - jupyterlab
+  - gitpython
+  - torchscan
+  - fpdf
+prefix: C:\Anaconda3\envs\torch
