@@ -1,4 +1,4 @@
-# Deep Learning from Synthetic Datafor Atomic Force Microscopy Image Reconstruction
+# Deep Learning from Synthetic Data for Atomic Force Microscopy Image Reconstruction
 
 This is code for the paper submitted to the journal Ultramicroscopy. The pre-print is available at: TBA.
 
