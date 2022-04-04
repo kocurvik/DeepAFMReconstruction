@@ -6,17 +6,17 @@ This is code for the paper submitted to the journal Ultramicroscopy. The pre-pri
 
 First download the whole repo:
 
-    git clone https://github.com/kocurvik/gefsem
+    git clone https://github.com/kocurvik/DeepAFMReconstruction
 
 Next, create the conda environment using the following command:
 
     conda env create -f environment.yml
 You can then activate the environment using:
 
-    conda activate gefsem
+    conda activate deepafmreconstruction
 You will also need to add the main folder to PYTHONPATH:
 
-    export PYTHONPATH=/path/to/the/repo/gefsem;
+    export PYTHONPATH=/path/to/the/repo/DeepAFMReconstruction;
 ## Running the evaluation scripts
 You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](TBA).
 
