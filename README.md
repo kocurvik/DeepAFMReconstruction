@@ -20,7 +20,7 @@ You will also need to add the main folder to PYTHONPATH:
 ## Running the evaluation scripts
 You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](TBA).
 
-You will also need to download the pytorch model form [OneDrive]([resunet.pth](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec_Pg042vzJDsnS5WmnAWWIBV92nvYivkoORr5ogPcPbNA?e=bbB0Es)).
+You will also need to download the pytorch model from [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec_Pg042vzJDsnS5WmnAWWIBV92nvYivkoORr5ogPcPbNA?e=bbB0Es).
 
 You can then run the evaluation and generate a pdf with results (you might need to create a vis folder in you repo directory) by running:
 
