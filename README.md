@@ -6,21 +6,21 @@ This is code for the paper submitted to the journal Ultramicroscopy. The pre-pri
 
 First download the whole repo:
 
-    git clone https://github.com/kocurvik/gefsem
+    git clone https://github.com/kocurvik/DeepAFMReconstruction
 
 Next, create the conda environment using the following command:
 
     conda env create -f environment.yml
 You can then activate the environment using:
 
-    conda activate gefsem
+    conda activate deepafmreconstruction
 You will also need to add the main folder to PYTHONPATH:
 
-    export PYTHONPATH=/path/to/the/repo/gefsem;
+    export PYTHONPATH=/path/to/the/repo/DeepAFMReconstruction;
 ## Running the evaluation scripts
-You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](TBA).
+You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/EQGdkBbDPqpIqIVPpC_D6HoBKOjynXH1mgtzwnW0LvkvRA?e=W0BYIi).
 
-You will also need to download the pytorch model form [OneDrive]([resunet.pth](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec_Pg042vzJDsnS5WmnAWWIBV92nvYivkoORr5ogPcPbNA?e=bbB0Es)).
+You will also need to download the pytorch model from [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec_Pg042vzJDsnS5WmnAWWIBV92nvYivkoORr5ogPcPbNA?e=bbB0Es).
 
 You can then run the evaluation and generate a pdf with results (you might need to create a vis folder in you repo directory) by running:
 
@@ -37,6 +37,16 @@ You can omit or change the -nw 6 argument to change the number of workers to fit
 Afterwards you can generate a table by running:
 
     python eval/generate_table.py path/to/downloaded/EvalData
+
+## Running on gwy files
+ You can also run the model on individual gwy files. 
+ 
+
+    python run_on_gwy.py /path/to/model.pth /path/to/gwy/file.gwy
+You can also use the `-m` option to perform manual offset selection. 
+
+The script expects two channels calles `Topo[>]` and `Topo[<]` including metadata about the scanning direction. If you have a different structure of gwy files feel free to edit the script to suit your format. The resulting reconstruction will be saved to `/path/to/gwy/file_reconstructed.gwy` as a new `ResUnet Reconstruction` channel.
+
 ## Training
 If you want to train the network you will have to follow these steps:
 ### Generating the dataset
@@ -66,5 +76,3 @@ You will have to select and click on the keypoints in the first image. Then you 
 You can use the `-m` option to run manual alignment of left-to-right and right-to-left scans if the simple MSE method does not work. If you do this you will need to manually align the images. You can use the keyboard controls: t and v control contrast, k and s control the offset, c continues to next image and saves offset.
 
 This should create a json file which can be used in the validation script (as discussed above).
-### Running on gwy files
-TBA

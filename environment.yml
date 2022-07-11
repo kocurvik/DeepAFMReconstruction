@@ -1,4 +1,4 @@
-name: gefsem
+name: deepafmreconstruction
 channels:
   - defaults
 dependencies:
