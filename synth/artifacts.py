@@ -3,6 +3,7 @@ import time
 
 import cv2
 import numpy as np
+from scipy.interpolate import interpolate
 
 from synth.generator import generate_grid_structure
 from synth.tip_dilation import dilate, fast_dilate
@@ -112,6 +113,9 @@ class Artifactor():
             'shadows_prob': 0.8, 'shadows_uniform_p': 0.5, 'shadows_uniform_both_p': 0.5, 'shadows_randomize_prob': 0.5,
             'shadows_max': 1.5, 'shadows_max_randomize_percentage': 0.3,
 
+            # z drift params
+            'z_drift_prob': 0.5, 'z_drift_max_coef': 3.0, 'z_drift_max_samples': 12,
+
             # x-correlated noise params
             'noise_prob': 0.8, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
             'noise_sigma_max': 0.1}
@@ -153,6 +157,38 @@ class Artifactor():
             image = np.flip(image, axis=-1)
         return image
 
+
+    def generate_drift_profile(self, shape):
+        base_length = np.random.randint(5, self.z_drift_max_samples)
+        profile_base = np.random.rand(base_length)
+        x_base = np.arange(base_length)
+        x_final = np.linspace(x_base[1], x_base[-2], shape[0] * shape[1] * 2)
+
+        f = interpolate.interp1d(x_base, profile_base, kind='cubic', assume_sorted=True)
+
+        profile_final = f(x_final)
+
+        profile_final -= np.mean(profile_final)
+
+        # from matplotlib import pyplot as plt
+        # plt.plot(profile_final)
+        # plt.show()
+
+        return profile_final
+
+    def add_z_drift(self, img_l, img_r):
+        drift_profile = self.generate_drift_profile(img_l.shape)
+        drift_profile *= np.random.randn() * self.z_drift_max_coef
+        drift_profile = drift_profile.reshape(img_l.shape[0], img_l.shape[1] * 2)
+
+        drift_profile_l = drift_profile[:, :img_l.shape[1]]
+        drift_profile_r = np.flip(drift_profile[:, img_l.shape[1]:], axis=-1)
+
+        img_l += drift_profile_l
+        img_r += drift_profile_r
+
+        return img_l, img_r
+
     def add_noise(self, image, flip=False):
         sigma = np.random.uniform(self.noise_sigma_min, self.noise_sigma_max)
         alpha = np.random.uniform(self.noise_alpha_min, self.noise_alpha_max)
@@ -177,6 +213,9 @@ class Artifactor():
                 per_pixel_decrease = None
             img_l = self.add_shadows(img_l, per_pixel_decrease=per_pixel_decrease)
             img_r = self.add_shadows(img_r, flip=True, per_pixel_decrease=per_pixel_decrease)
+
+        if np.random.rand() < self.z_drift_prob:
+            img_l, img_r = self.add_z_drift(img_l, img_r)
 
         if np.random.rand() < self.noise_prob:
             img_l = self.add_noise(img_l)

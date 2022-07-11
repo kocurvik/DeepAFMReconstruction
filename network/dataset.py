@@ -97,22 +97,23 @@ class PregeneratedDataset(torch.utils.data.Dataset):
 
 
 if __name__ == '__main__':
-    path = 'D:/Research/data/GEFSEM/synth/generated/555e6565715b5fd76a38f56c7fbf2098ab3e69a3/'
+    path = 'D:/Research/data/GEFSEM/UltraMicroscopy2022Q2/synth/generated/fcbf950336bf8a50c85341f2359248864eda7120/'
     dataset = OnlineDataset(path)
     # dataset.artifactor.shadows_prob = 1.0
     # dataset.artifactor.overshoot_prob = 0.0
     # dataset.artifactor.noise_prob = 0.0
     # dataset.artifactor.skew_prob = 0.0
+    dataset.synthesizer.artifactor.z_drift_max_coef = 3.0
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
 
     for item in data_loader:
         cv2.imshow("L", item['input'][0, 0].numpy())
         cv2.imshow("R", item['input'][0, 1].numpy())
         cv2.imshow("GT", item['gt'][0].numpy())
-        cv2.waitKey(1)
+        cv2.waitKey(0)
 
-        plt.plot(item['input'][0, 0].numpy()[64, :], 'r')
-        plt.plot(item['input'][0, 1].numpy()[64, :], 'b')
-        plt.plot(item['gt'][0].numpy()[64, :])
-        plt.show()
+        # plt.plot(item['input'][0, 0].numpy()[64, :], 'r')
+        # plt.plot(item['input'][0, 1].numpy()[64, :], 'b')
+        # plt.plot(item['gt'][0].numpy()[64, :])
+        # plt.show()
 
