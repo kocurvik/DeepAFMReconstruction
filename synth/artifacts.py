@@ -114,7 +114,8 @@ class Artifactor():
             'shadows_max': 1.5, 'shadows_max_randomize_percentage': 0.3,
 
             # z drift params
-            'z_drift_prob': 0.5, 'z_drift_max_coef': 3.0, 'z_drift_max_samples': 12,
+            'z_drift_prob': 0.5, 'z_drift_sigma_max': 0.1, 'z_drift_sigma_min': 0.0001,
+            'z_drift_alpha_max': 0.9, 'z_drift_alpha_min': 0.0,
 
             # x-correlated noise params
             'noise_prob': 0.8, 'noise_alpha_min': 0.00, 'noise_alpha_max': 0.9, 'noise_sigma_min': 0.0001,
@@ -157,35 +158,17 @@ class Artifactor():
             image = np.flip(image, axis=-1)
         return image
 
-
-    def generate_drift_profile(self, shape):
-        base_length = np.random.randint(5, self.z_drift_max_samples)
-        profile_base = np.random.rand(base_length)
-        x_base = np.arange(base_length)
-        x_final = np.linspace(x_base[1], x_base[-2], shape[0] * shape[1] * 2)
-
-        f = interpolate.interp1d(x_base, profile_base, kind='cubic', assume_sorted=True)
-
-        profile_final = f(x_final)
-
-        profile_final -= np.mean(profile_final)
-
-        # from matplotlib import pyplot as plt
-        # plt.plot(profile_final)
-        # plt.show()
-
-        return profile_final
-
     def add_z_drift(self, img_l, img_r):
-        drift_profile = self.generate_drift_profile(img_l.shape)
-        drift_profile *= np.random.randn() * self.z_drift_max_coef
-        drift_profile = drift_profile.reshape(img_l.shape[0], img_l.shape[1] * 2)
+        sigma = np.random.uniform(self.z_drift_sigma_min, self.z_drift_sigma_max)
+        alpha = np.random.uniform(self.z_drift_alpha_min, self.z_drift_alpha_max)
 
-        drift_profile_l = drift_profile[:, :img_l.shape[1]]
-        drift_profile_r = np.flip(drift_profile[:, img_l.shape[1]:], axis=-1)
+        noise = 0.0
 
-        img_l += drift_profile_l
-        img_r += drift_profile_r
+        for j in range(img_l.shape[0]):
+            noise = sigma * np.random.rand() + alpha * noise
+            img_l[j, :] += noise
+            noise = sigma * np.random.rand() + alpha * noise
+            img_r[j, :] += noise
 
         return img_l, img_r
 
