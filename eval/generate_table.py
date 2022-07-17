@@ -23,6 +23,7 @@ def generate_table(data_path):
         model_name = json_path.split('_results')[0]
         with open(os.path.join(data_path, json_path), 'r') as f:
             all_results[model_name] = json.load(f)
+            all_results[model_name] = sorted(all_results[model_name], key=lambda x: x['dir'])
 
     for i in range(len(all_results[model_name])):
         dir = all_results[model_name][i]['dir']
