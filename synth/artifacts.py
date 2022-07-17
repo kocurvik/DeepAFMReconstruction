@@ -114,7 +114,7 @@ class Artifactor():
             'shadows_max': 1.5, 'shadows_max_randomize_percentage': 0.3,
 
             # z drift params
-            'z_drift_prob': 0.5, 'z_drift_sigma_max': 0.1, 'z_drift_sigma_min': 0.0001,
+            'z_drift_prob': 0.0, 'z_drift_sigma_max': 0.1, 'z_drift_sigma_min': 0.0001,
             'z_drift_alpha_max': 0.9, 'z_drift_alpha_min': 0.0,
 
             # x-correlated noise params

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from synth.artifacts import Artifactor
 from synth.synthetizer import Synthesizer
-from utils.image import normalize_joint, subtract_mean_plane_both
+from utils.image import normalize_joint, subtract_mean_plane_both, line_by_line_level
 
 
 class OnlineDataset(torch.utils.data.Dataset):
@@ -45,6 +45,7 @@ class PregeneratedDataset(torch.utils.data.Dataset):
         self.split_path = os.path.join(path, "{}.npy".format(split))
 
         self.subtract_mean_plane = False
+        self.line_by_line_leveling = 0
 
         json_path = os.path.join(path, "{}.json".format(split))
         print("Data without artifacts loading config from: ", json_path)
@@ -62,6 +63,10 @@ class PregeneratedDataset(torch.utils.data.Dataset):
             self.entries = np.load(self.split_path)
             if json_dict['args']['subtract_mean_plane']:
                 self.subtract_mean_plane = True
+            if json_dict['args'].has_key('line_by_line_leveling'):
+                self.line_by_line_leveling = int(json_dict['args']['line_by_line_leveling'])
+            else:
+                self.line_by_line_leveling = 0
             print("Artifacts will be applied on the run")
 
 
@@ -85,6 +90,13 @@ class PregeneratedDataset(torch.utils.data.Dataset):
             if self.subtract_mean_plane:
                 image_l, image_r, plane = subtract_mean_plane_both(image_l, image_r,return_plane=True)
                 image_gt -= plane
+
+            if self.line_by_line_leveling > 0:
+                _, _, plane = subtract_mean_plane_both(image_l, image_r, return_plane=True)
+                image_gt -= plane
+                image_l = line_by_line_level(image_l, self.line_by_line_leveling)
+                image_r = line_by_line_level(image_r, self.line_by_line_leveling)
+
             images = normalize_joint([image_l, image_r, image_gt])
             entry = torch.from_numpy(np.stack(images, axis=0).astype(np.float32))
         else:

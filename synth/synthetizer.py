@@ -14,7 +14,7 @@ import numpy as np
 from synth.artifacts import Artifactor
 from synth.generator import GridGenerator, FFTGenerator
 from synth.tip_dilation import FastTipDilator
-from utils.image import normalize_joint, subtract_mean_plane_both, subtract_mean_plane
+from utils.image import normalize_joint, subtract_mean_plane_both, subtract_mean_plane, line_by_line_level
 
 
 class Synthesizer():
@@ -38,7 +38,7 @@ class Synthesizer():
 
     @staticmethod
     def get_default_param_dict():
-        default_params = {'subtract_mean_plane': 1.0}
+        default_params = {'subtract_mean_plane': 1.0, 'line_by_line_leveling': 0}
 
         default_params.update(FFTGenerator.get_default_param_dict())
         default_params.update(FastTipDilator.get_default_param_dict())
@@ -79,11 +79,23 @@ class Synthesizer():
             if self.subtract_mean_plane:
                 image_l, image_r, plane = subtract_mean_plane_both(image_l, image_r, return_plane=True)
                 image_gt -= plane
+
+            if int(self.line_by_line_leveling) > 0:
+                _, _, plane = subtract_mean_plane_both(image_l, image_r, return_plane=True)
+                image_l = line_by_line_level(image_l, int(self.line_by_line_leveling))
+                image_r = line_by_line_level(image_r, int(self.line_by_line_leveling))
+                image_gt -= plane
+
             images = normalize_joint([image_l, image_r, image_gt])
         else:
             if self.subtract_mean_plane:
-                image_dil, plane = subtract_mean_plane(image_dil,return_plane=True)
+                image_dil, plane = subtract_mean_plane(image_dil, return_plane=True)
                 image_gt -= plane
+
+            if int(self.line_by_line_leveling) > 0:
+                _, plane = subtract_mean_plane(image_dil, return_plane=True)
+                image_gt -= plane
+
             images = normalize_joint([image_dil, image_gt])
 
         entry = np.stack(images, axis=0).astype(np.float32)

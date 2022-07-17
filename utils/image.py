@@ -32,6 +32,19 @@ def subtract_mean_plane(img, return_plane=False):
     return img - plane
 
 
+def line_by_line_level(img, deg=1):
+    x = np.linspace(0, 1.0, img.shape[1])
+    for i in range(img.shape[0]):
+        coeffs = np.polyfit(x, img[i, :], deg=deg)
+        line = coeffs[0] * (x ** deg)
+        for j in range(deg):
+            line += coeffs[j + 1] * (x ** (deg - j - 1))
+
+        img[i, :] -= line
+
+    return img
+
+
 def subtract_mean_plane_both(img_l, img_r, return_plane=False):
     # Subtract mean plane from two images. The mean plane is calculated for both images simultaneously
     x, y = np.mgrid[:img_l.shape[0], :img_l.shape[1]]

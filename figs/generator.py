@@ -70,26 +70,26 @@ def save_fig(image, filename):
 
 
 if __name__ == '__main__':
-    # syn = Synthesizer(tips_path='D:/Research/data/GEFSEM/synth/res/tips.pkl')
-    #
-    # for i in range(16):
-    #     image_l, image_r, image_gt = syn.generate_single_entry(apply_artifacts=True)
-    #
-    #     cv2.imshow("L", image_l)
-    #     cv2.imshow("R", image_r)
-    #     cv2.imshow("GT", image_gt)
-    #
-    #     key = cv2.waitKey(1)
-    #     # if key == ord('s'):
-    #     # save_fig(image_l, 'figs/gen/{:02d}_plot_l.pdf'.format(i))
-    #     # save_fig(image_r, 'figs/gen/{:02d}_plot_r.pdf'.format(i))
-    #     # save_fig(image_gt, 'figs/gen/{:02d}_gt.pdf'.format(i))
-    #
-    #     cv2.imwrite('figs/gen/{:02d}_img_l.png'.format(i), 255 * image_l)
-    #     cv2.imwrite('figs/gen/{:02d}_img_r.png'.format(i), 255 * image_r)
-    #     cv2.imwrite('figs/gen/{:02d}_img_gt.png'.format(i), 255 * image_gt)
+    syn = Synthesizer(tips_path='D:/Research/data/GEFSEM/UltraMicroscopy2022Q2/synth/res/tips.pkl')
 
-    #
+    for i in range(16):
+        image_l, image_r, image_gt = syn.generate_single_entry(apply_artifacts=True)
+
+        cv2.imshow("L", image_l)
+        cv2.imshow("R", image_r)
+        cv2.imshow("GT", image_gt)
+
+        key = cv2.waitKey(1)
+        # if key == ord('s'):
+        # save_fig(image_l, 'figs/gen/{:02d}_plot_l.pdf'.format(i))
+        # save_fig(image_r, 'figs/gen/{:02d}_plot_r.pdf'.format(i))
+        # save_fig(image_gt, 'figs/gen/{:02d}_gt.pdf'.format(i))
+
+        cv2.imwrite('figs/gen/{:02d}_img_l.png'.format(i), 255 * image_l)
+        cv2.imwrite('figs/gen/{:02d}_img_r.png'.format(i), 255 * image_r)
+        cv2.imwrite('figs/gen/{:02d}_img_gt.png'.format(i), 255 * image_gt)
+
+
     # for i in range(8):
     #     for j in range(2):
     #         img_num = i * 2 + j
