@@ -12,6 +12,7 @@ def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--manual_offset', action='store_true', default=False, help='Whether the offset needs to be set manually')
+    parser.add_argument('--mask', action='store_true', default=False, help='Whether the load the masks')
     parser.add_argument('data_path', help='Path to the dataset folder containing multiple gwy files of the same sample')
     args = parser.parse_args()
     return args
@@ -48,7 +49,7 @@ def annotate_entries(entries):
     return entries
 
 
-def set_manual_offset(img_l, img_r):
+def set_manual_offset(img_l, img_r, mask=None):
     # Set manual offset for img_l and img_r when alignment via simple MSE fails.
     # Controlled by key presses: t and v control contrast, k and s control the offset,
     # c continues to next image and saves offset
@@ -79,10 +80,12 @@ def set_manual_offset(img_l, img_r):
         if key == ord('v'):
             gamma = max(0.1, gamma - 0.1)
         if key == ord('c'):
-            return enforce_img_size_for_nn(img_l_off, img_r_off)
+            if mask is None:
+                return enforce_img_size_for_nn(img_l_off, img_r_off)
+            return enforce_img_size_for_nn(img_l_off, img_r_off, mask[:, offset:])
 
 
-def extract_eval_data(path, manual_offset=False):
+def extract_eval_data(path, manual_offset=False, load_mask=False):
     # Loads gwy data from a folder
     filenames = os.listdir(path)
     filenames = [f for f in filenames if '.gwy' in f and 'tip' not in f and 'bad' not in f]
@@ -91,13 +94,22 @@ def extract_eval_data(path, manual_offset=False):
 
     for filename in filenames:
         gwy_path = os.path.join(path, filename)
-        if manual_offset:
-            img_l, img_r = load_lr_img_from_gwy(gwy_path, remove_offset=False, normalize_range=False)
-            img_l, img_r = set_manual_offset(img_l, img_r)
-        else:
-            img_l, img_r = load_lr_img_from_gwy(gwy_path, normalize_range=False)
+        if load_mask:
+            if manual_offset:
+                img_l, img_r, mask = load_lr_img_from_gwy(gwy_path, remove_offset=False, normalize_range=False, include_mask=True)
+                img_l, img_r, mask = set_manual_offset(img_l, img_r, mask=mask)
+            else:
+                img_l, img_r, mask = load_lr_img_from_gwy(gwy_path, normalize_range=False, include_mask=True)
 
-        entry_dict = {'filename': filename, 'gwy_path': gwy_path, 'img_l': img_l, 'img_r': img_r}
+            entry_dict = {'filename': filename, 'gwy_path': gwy_path, 'img_l': img_l, 'img_r': img_r, 'mask': mask}
+        else:
+            if manual_offset:
+                img_l, img_r = load_lr_img_from_gwy(gwy_path, remove_offset=False, normalize_range=False)
+                img_l, img_r = set_manual_offset(img_l, img_r)
+            else:
+                img_l, img_r = load_lr_img_from_gwy(gwy_path, normalize_range=False)
+
+            entry_dict = {'filename': filename, 'gwy_path': gwy_path, 'img_l': img_l, 'img_r': img_r}
 
         entries.append(entry_dict)
     return entries
@@ -112,6 +124,6 @@ def save_entries(entries, path):
 if __name__ == '__main__':
     args = parse_command_line()
 
-    entries = extract_eval_data(args.data_path, manual_offset=args.manual_offset)
+    entries = extract_eval_data(args.data_path, manual_offset=args.manual_offset, load_mask=args.mask)
     annotate_entries(entries)
     save_entries(entries, args.data_path)

@@ -32,10 +32,13 @@ def subtract_mean_plane(img, return_plane=False):
     return img - plane
 
 
-def line_by_line_level(img, deg=1):
+def line_by_line_level(img, deg=1, mask=None):
     x = np.linspace(0, 1.0, img.shape[1])
     for i in range(img.shape[0]):
-        coeffs = np.polyfit(x, img[i, :], deg=deg)
+        if mask is not None:
+            coeffs = np.polyfit(x[mask[i] > 0.0], img[i, mask[i] > 0], deg=deg)
+        else:
+            coeffs = np.polyfit(x, img[i], deg=deg)
         line = coeffs[0] * (x ** deg)
         for j in range(deg):
             line += coeffs[j + 1] * (x ** (deg - j - 1))
@@ -45,15 +48,22 @@ def line_by_line_level(img, deg=1):
     return img
 
 
-def subtract_mean_plane_both(img_l, img_r, return_plane=False):
+def subtract_mean_plane_both(img_l, img_r, mask=None, return_plane=False):
     # Subtract mean plane from two images. The mean plane is calculated for both images simultaneously
     x, y = np.mgrid[:img_l.shape[0], :img_l.shape[1]]
-    X = np.column_stack([x.ravel(), y.ravel(), np.ones(img_l.shape[0] * img_l.shape[1])])
-    X = np.concatenate([X, X], axis=0)
+    X_orig = np.column_stack([x.ravel(), y.ravel(), np.ones(img_l.shape[0] * img_l.shape[1])])
+    X_orig = np.concatenate([X_orig, X_orig], axis=0)
     H = np.concatenate([img_l.ravel(), img_r.ravel()], axis=0)
 
+    if mask is not None:
+        mask = np.concatenate([mask.ravel(), mask.ravel()], axis=0)
+        X = X_orig[mask > 0.0]
+        H = H[mask > 0.0]
+    else:
+        X = np.copy(X_orig)
+
     theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X.transpose()), H)
-    plane = np.reshape(np.dot(X, theta), (2 * img_l.shape[0], img_r.shape[1]))
+    plane = np.reshape(np.dot(X_orig, theta), (2 * img_l.shape[0], img_r.shape[1]))
 
     plane = plane[:img_l.shape[0], :]
 
@@ -87,7 +97,7 @@ def denormalize(img, orig_imgs):
     return (img * (max - min)) + min
 
 
-def remove_offset_lr(img_l, img_r, max_offset=64):
+def remove_offset_lr(img_l, img_r, mask=None, max_offset=64):
     # Align two images img_l and img_r so that they overlap the best w.r.t. mutual MSE, then crop the images so only
     # the overlapped area remains
     mses = np.zeros(max_offset)
@@ -98,10 +108,12 @@ def remove_offset_lr(img_l, img_r, max_offset=64):
 
     best_offset = np.argmin(mses)
 
-    return img_l[:, best_offset:], img_r[:, :max_width - best_offset]
+    if mask is None:
+        return img_l[:, best_offset:], img_r[:, :max_width - best_offset]
+    return img_l[:, best_offset:], img_r[:, :max_width - best_offset], mask[:, best_offset:]
 
 
-def enforce_img_size_for_nn(img_1, img_2, dim=8):
+def enforce_img_size_for_nn(img_1, img_2, mask=None, dim=8):
     # Make sure that the dimensions of the image can be passed to the NN
     # E.g. dims of img_1 and img_2 have to be divisible by dim)
     min_height = (min(img_1.shape[0], img_2.shape[0]) // dim) * dim
@@ -109,16 +121,21 @@ def enforce_img_size_for_nn(img_1, img_2, dim=8):
 
     img_1 = img_1[:min_height, :min_width]
     img_2 = img_2[:min_height, :min_width]
-    return img_1, img_2
+    if mask is None:
+        return img_1, img_2
+    return img_1, img_2, mask[:min_height, :min_width]
 
 
-def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enforce_nn=True):
+def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enforce_nn=True, include_mask=False):
     # Load the left and right topography images from a .gwy file. Additional args enable the use of more postprocessing
     obj = gwyfile.load(gwy_path)
     channels = gwyfile.util.get_datafields(obj)
 
     img_r = channels['Topo [<]'].data
     img_l = channels['Topo [>]'].data
+
+    if include_mask:
+        mask = channels['Mask [>]'].data
 
     scan_direction = obj['/0/meta']['scan.dir']
 
@@ -128,16 +145,28 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
         img_r = np.rot90(img_r)
         img_l = np.rot90(img_l)
 
+        if include_mask:
+            mask = np.rot90(mask)
+
     if normalize_range:
         img_l, img_r = normalize(np.stack([img_l, img_r], axis=0))
 
+    if include_mask:
+        if remove_offset:
+            img_l, img_r, mask = remove_offset_lr(img_l, img_r, mask=mask)
+
+        if enforce_nn:
+            img_l, img_r, mask = enforce_img_size_for_nn(img_l, img_r, mask=mask)
+
+        return img_l, img_r, mask
+
     if remove_offset:
         img_l, img_r = remove_offset_lr(img_l, img_r)
-
     if enforce_nn:
         img_l, img_r = enforce_img_size_for_nn(img_l, img_r)
 
     return img_l, img_r
+
 
 
 def rotate(image, deg):

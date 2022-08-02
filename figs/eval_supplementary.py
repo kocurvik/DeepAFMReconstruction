@@ -10,8 +10,6 @@ import scipy
 import torch
 from PIL import Image
 
-from eval.registration import register_affine_orb, register_rigid_sitk, resample_images
-from network.train import load_model
 from network.unet import ResUnet
 from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize, \
     subtract_mean_plane, subtract_mean_plane_both

@@ -28,6 +28,7 @@ def parse_command_line():
     parser.add_argument('-a', '--average', action='store_true', default=False, help='Whether to apply the average filter if the baseline is used')
     parser.add_argument('-m', '--median', action='store_true', default=False, help='Whether to apply the median filter if the baseline is used')
     parser.add_argument('-l', '--level', action='store_true', default=False, help='Whether to subtract the mean plane before and after inference')
+    parser.add_argument('--mask', action='store_true', default=False, help='Whether to use mask for levelling')
     parser.add_argument('-ll', '--line_by_line_level', type=int, default=0, help='Line by line leveling degree')
     parser.add_argument('-t', '--threshold', type=float, default=0.01, help='Threshold for the baseline method')
     parser.add_argument('-nw', '--num_workers', type=int, default=6, help='Number of workers for multiprocessing')
@@ -146,7 +147,7 @@ def eval_same_sample(entries, num_workers=6):
     return results
 
 
-def inference(model, entries, level=False, ll=0):
+def inference(model, entries, level=False, ll=0, use_mask=False):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
@@ -154,12 +155,18 @@ def inference(model, entries, level=False, ll=0):
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
-        if level:
-            img_l, img_r = subtract_mean_plane_both(img_l, img_r)
-
-        if ll > 0:
-            img_l = line_by_line_level(img_l, deg=ll)
-            img_r = line_by_line_level(img_r, deg=ll)
+        if use_mask:
+            if level:
+                img_l, img_r = subtract_mean_plane_both(img_l, img_r, mask=entry['mask'])
+            if ll > 0:
+                img_l = line_by_line_level(img_l, ll, mask=entry['mask'])
+                img_r = line_by_line_level(img_r, ll, mask=entry['mask'])
+        else:
+            if level:
+                img_l, img_r = subtract_mean_plane_both(img_l, img_r)
+            if ll > 0:
+                img_l = line_by_line_level(img_l, ll)
+                img_r = line_by_line_level(img_r, ll)
 
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
         # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
@@ -174,7 +181,7 @@ def inference(model, entries, level=False, ll=0):
     return entries
 
 
-def apply_baseline(entries, gauss=False, average=False, median=False, threshold=0.1, level=False, ll=0):
+def apply_baseline(entries, gauss=False, average=False, median=False, threshold=0.1, level=False, ll=0, use_mask=False):
     for entry in entries:
         img_l = entry['img_l']
         img_r = entry['img_r']
@@ -182,11 +189,18 @@ def apply_baseline(entries, gauss=False, average=False, median=False, threshold=
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
-        if level:
-            img_l, img_r = subtract_mean_plane_both(img_l, img_r)
-        if ll > 0:
-            img_l = line_by_line_level(img_l, ll)
-            img_r = line_by_line_level(img_r, ll)
+        if use_mask:
+            if level:
+                img_l, img_r = subtract_mean_plane_both(img_l, img_r, mask=entry['mask'])
+            if ll > 0:
+                img_l = line_by_line_level(img_l, ll, mask=entry['mask'])
+                img_r = line_by_line_level(img_r, ll, mask=entry['mask'])
+        else:
+            if level:
+                img_l, img_r = subtract_mean_plane_both(img_l, img_r)
+            if ll > 0:
+                img_l = line_by_line_level(img_l, ll)
+                img_r = line_by_line_level(img_r, ll)
 
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
 
@@ -266,7 +280,7 @@ def main(args):
         list_of_entries.append(entries)
 
     if args.model_path == 'baseline':
-        list_of_entries = [apply_baseline(entries, args.gauss, args.average, args.median, threshold=args.threshold, level=args.level, ll=args.line_by_line_level) for entries in list_of_entries]
+        list_of_entries = [apply_baseline(entries, args.gauss, args.average, args.median, threshold=args.threshold, level=args.level, ll=args.line_by_line_level, use_mask=args.mask) for entries in list_of_entries]
         model_basename = 'baseline_{}'.format(args.threshold)
         if args.gauss:
             model_basename += '_gauss'
@@ -280,13 +294,16 @@ def main(args):
         model_basename = os.path.basename(args.model_path).split('.')[0]
         model.load_state_dict(torch.load(args.model_path))
         model.eval()
-        list_of_entries = [inference(model, entries, level=args.level, ll=args.line_by_line_level) for entries in list_of_entries]
+        list_of_entries = [inference(model, entries, level=args.level, ll=args.line_by_line_level, use_mask=args.mask) for entries in list_of_entries]
 
     if args.level:
         model_basename += '_level'
 
     if args.line_by_line_level:
         model_basename += '_ll{}'.format(args.line_by_line_level)
+
+    if args.mask:
+        model_basename += '_masked'
 
     print("Model basename: " + model_basename)
 

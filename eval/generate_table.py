@@ -66,7 +66,7 @@ def generate_table(data_path):
 
                     vals.append(val)
 
-                line = model + (30 - len(model))*' ' + '& ' + ' & '.join(vals) + '\\\\ \\hline'
+                line = model + (40 - len(model))*' ' + '& ' + ' & '.join(vals) + '\\\\ \\hline'
                 print(line)
 
 
