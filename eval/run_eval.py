@@ -168,6 +168,9 @@ def inference(model, entries, level=False, ll=0, use_mask=False):
                 img_l = line_by_line_level(img_l, ll)
                 img_r = line_by_line_level(img_r, ll)
 
+        entry['img_l_level'] = img_l
+        entry['img_r_level'] = img_r
+
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
         # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
         nn_input = torch.from_numpy(np.stack([img_l_normalized, img_r_normalized], axis=0)[None, ...]).float().cuda()
@@ -201,6 +204,9 @@ def apply_baseline(entries, gauss=False, average=False, median=False, threshold=
             if ll > 0:
                 img_l = line_by_line_level(img_l, ll)
                 img_r = line_by_line_level(img_r, ll)
+
+        entry['img_l_level'] = img_l
+        entry['img_r_level'] = img_r
 
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
 
