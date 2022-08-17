@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 DIRNAME_DICT = {'d008': 'Wafers', 'D010_Bunky': 'Cells', 'INCHAR (MFM sample)': 'Permalloy', 'Kremik': 'Silicon',
-                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3'}
+                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3',
+                'OrigLogos': 'Logos', 'NewLogos': 'Rot Logos', 'CombinedLogos': 'Combined Logos', 'LevelLogos': 'Pre-leveled Logos'}
 
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
