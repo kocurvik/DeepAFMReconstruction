@@ -17,15 +17,22 @@ def normalize(img):
         return (img - np.min(img)) / (np.max(img) - np.min(img))
 
 
-def subtract_mean_plane(img, return_plane=False):
+def subtract_mean_plane(img, mask=None, return_plane=False):
     # Subtract mean plane from single image
     x, y = np.mgrid[:img.shape[0], :img.shape[1]]
 
-    X = np.column_stack([x.ravel(), y.ravel(), np.ones(img.shape[0] * img.shape[1])])
+    X_orig = np.column_stack([x.ravel(), y.ravel(), np.ones(img.shape[0] * img.shape[1])])
     H = img.ravel()
 
+    if mask is not None:
+        mask = np.concatenate([mask.ravel(), mask.ravel()], axis=0)
+        X = X_orig[mask > 0.0]
+        H = H[mask > 0.0]
+    else:
+        X = np.copy(X_orig)
+
     theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X.transpose()), H)
-    plane = np.reshape(np.dot(X, theta), (img.shape[0], img.shape[1]))
+    plane = np.reshape(np.dot(X_orig, theta), (img.shape[0], img.shape[1]))
 
     if return_plane:
         return img - plane, plane
@@ -137,7 +144,10 @@ def load_lr_img_from_gwy(gwy_path, remove_offset=True, normalize_range=True, enf
     if include_mask:
         mask = channels['Mask [>]'].data
 
-    scan_direction = obj['/0/meta']['scan.dir']
+    try:
+        scan_direction = obj['/0/meta']['scan.dir']
+    except:
+        scan_direction = 'top-down'
 
     # basename = os.path.basename(gwy_path)
     # if 'l-r' in basename or 'r-l' in basename:

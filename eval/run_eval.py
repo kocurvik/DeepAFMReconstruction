@@ -31,7 +31,7 @@ def parse_command_line():
     parser.add_argument('--mask', action='store_true', default=False, help='Whether to use mask for levelling')
     parser.add_argument('-ll', '--line_by_line_level', type=int, default=0, help='Line by line leveling degree')
     parser.add_argument('-t', '--threshold', type=float, default=0.01, help='Threshold for the baseline method')
-    parser.add_argument('-nw', '--num_workers', type=int, default=6, help='Number of workers for multiprocessing')
+    parser.add_argument('-nw', '--num_workers', type=int, default=4, help='Number of workers for multiprocessing')
     parser.add_argument('model_path', help='Path to the .pth model, alternatively use baseline to run the baseline model')
     parser.add_argument('data_path', help='Path to a folder containing the dataset with json files generated using eval/annotator.py')
     args = parser.parse_args()
@@ -125,7 +125,7 @@ def eval_same_sample(entries, num_workers=6):
     index_pairs = list(itertools.combinations(np.arange(len(entries)), 2))
 
     pool = Pool(num_workers)
-    metric_values = pool.starmap(evaluate_pair, zip(index_pairs, itertools.repeat(entries)))
+    metric_values = pool.starmap(evaluate_pair, zip(index_pairs, itertools.repeat(entries)), chunksize=8)
 
 
     for out_idx, index_pair in enumerate(index_pairs):
@@ -155,18 +155,7 @@ def inference(model, entries, level=False, ll=0, use_mask=False):
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
-        if use_mask:
-            if level:
-                img_l, img_r = subtract_mean_plane_both(img_l, img_r, mask=entry['mask'])
-            if ll > 0:
-                img_l = line_by_line_level(img_l, ll, mask=entry['mask'])
-                img_r = line_by_line_level(img_r, ll, mask=entry['mask'])
-        else:
-            if level:
-                img_l, img_r = subtract_mean_plane_both(img_l, img_r)
-            if ll > 0:
-                img_l = line_by_line_level(img_l, ll)
-                img_r = line_by_line_level(img_r, ll)
+        img_l, img_r = preprocess(entry, img_l, img_r, level, ll, use_mask)
 
         entry['img_l_level'] = img_l
         entry['img_r_level'] = img_r
@@ -184,6 +173,26 @@ def inference(model, entries, level=False, ll=0, use_mask=False):
     return entries
 
 
+def preprocess(entry, img_l, img_r, level, ll, use_mask):
+    if use_mask:
+        if level:
+            # img_l, img_r = subtract_mean_plane_both(img_l, img_r, mask=entry['mask'])
+            img_l = subtract_mean_plane(img_l, mask=entry['mask'])
+            img_r = subtract_mean_plane(img_r, mask=entry['mask'])
+        if ll > 0:
+            img_l = line_by_line_level(img_l, ll, mask=entry['mask'])
+            img_r = line_by_line_level(img_r, ll, mask=entry['mask'])
+    else:
+        if level:
+            # img_l, img_r = subtract_mean_plane_both(img_l, img_r)
+            img_l = subtract_mean_plane(img_l)
+            img_r = subtract_mean_plane(img_r)
+        if ll > 0:
+            img_l = line_by_line_level(img_l, ll)
+            img_r = line_by_line_level(img_r, ll)
+    return img_l, img_r
+
+
 def apply_baseline(entries, gauss=False, average=False, median=False, threshold=0.1, level=False, ll=0, use_mask=False):
     for entry in entries:
         img_l = entry['img_l']
@@ -192,18 +201,7 @@ def apply_baseline(entries, gauss=False, average=False, median=False, threshold=
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
-        if use_mask:
-            if level:
-                img_l, img_r = subtract_mean_plane_both(img_l, img_r, mask=entry['mask'])
-            if ll > 0:
-                img_l = line_by_line_level(img_l, ll, mask=entry['mask'])
-                img_r = line_by_line_level(img_r, ll, mask=entry['mask'])
-        else:
-            if level:
-                img_l, img_r = subtract_mean_plane_both(img_l, img_r)
-            if ll > 0:
-                img_l = line_by_line_level(img_l, ll)
-                img_r = line_by_line_level(img_r, ll)
+        img_l, img_r = preprocess(entry, img_l, img_r, level, ll, use_mask)
 
         entry['img_l_level'] = img_l
         entry['img_r_level'] = img_r
