@@ -10,12 +10,13 @@ import scipy
 import torch
 from PIL import Image
 
+from eval.run_eval import preprocess, baseline_lr_filtering, inference
 from network.unet import ResUnet
 from utils.image import normalize, enforce_img_size_for_nn, load_lr_img_from_gwy, normalize_joint, denormalize, \
     subtract_mean_plane, subtract_mean_plane_both
 
 DIRNAME_DICT = {'d008': 'Wafers', 'D010_Bunky': 'Cells', 'INCHAR (MFM sample)': 'Permalloy', 'Kremik': 'Silicon',
-                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3'}
+                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3', 'SiliconRot': 'SiliconRot'}
 
 
 def parse_command_line():
@@ -29,49 +30,6 @@ def parse_command_line():
     return args
 
 
-def baseline_lr_filtering(img_1, img_2, threshold=0.01):
-    """
-    Base solution to "shadow" problem. Same as in NN source codes.
-    :param img_1: first (L or R) image
-    :param img_2: second (L or R) image
-    :param threshold: thresholding of diff
-    :return: result of base filter
-    """
-    img_1 = np.squeeze(img_1)
-    img_2 = np.squeeze(img_2)
-
-    diff = img_1 - img_2
-
-    res = (img_1 + img_1) / 2
-    res = np.where(diff < -threshold, img_1, res)
-    res = np.where(diff > threshold, img_2, res)
-    return res
-
-
-def inference(model, entries, level=False):
-    for entry in entries:
-        img_l = entry['img_l']
-        img_r = entry['img_r']
-        # if 'slow' in entry['filename']:
-        #     entry['img_out'] = img_r.astype(np.float32)
-        #     continue
-
-        if level:
-            img_l, img_r = subtract_mean_plane_both(img_l, img_r)
-
-        img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
-        # img_nn = get_multi_input(model, img_l_normalized, img_r_normalized)
-        nn_input = torch.from_numpy(np.stack([img_l_normalized, img_r_normalized], axis=0)[None, ...]).float().cuda()
-        img_nn = model(nn_input).detach().cpu().numpy()[0, 0, ...]
-        if level:
-            entry['img_out'] = subtract_mean_plane(denormalize(img_nn, [img_l, img_r]))
-            entry['img_out_normalized'] = normalize(subtract_mean_plane(img_nn))
-        else:
-            entry['img_out_normalized'] = img_nn
-            entry['img_out'] = denormalize(img_nn, [img_l, img_r])
-    return entries
-
-
 def apply_baseline(entries, threshold=0.1, level=False):
     for entry in entries:
         img_l = entry['img_l']
@@ -80,22 +38,22 @@ def apply_baseline(entries, threshold=0.1, level=False):
         #     entry['img_out'] = img_r.astype(np.float32)
         #     continue
 
+        img_l, img_r = preprocess(entry, img_l, img_r, level, ll=0, use_mask=False)
+
+        entry['img_l_level'] = img_l
+        entry['img_r_level'] = img_r
+
         img_l_normalized, img_r_normalized = normalize_joint([img_l, img_r])
+
         img_baseline = normalize(baseline_lr_filtering(img_l_normalized, img_r_normalized, threshold=threshold))
         img_baseline_gauss = cv2.GaussianBlur(img_baseline, (5, 5), 0)
         img_baseline_average = cv2.blur(img_baseline, (5, 5))
         img_baseline_median = cv2.medianBlur(img_baseline, 5)
 
-        if level:
-            entry['img_out_baseline'] = subtract_mean_plane(denormalize(img_baseline, [img_l, img_r]))
-            entry['img_out_baseline_gauss'] = subtract_mean_plane(denormalize(img_baseline_gauss, [img_l, img_r]))
-            entry['img_out_baseline_average'] = subtract_mean_plane(denormalize(img_baseline_average, [img_l, img_r]))
-            entry['img_out_baseline_median'] = subtract_mean_plane(denormalize(img_baseline_median, [img_l, img_r]))
-        else:
-            entry['img_out_baseline'] = denormalize(img_baseline, [img_l, img_r])
-            entry['img_out_baseline_gauss'] = denormalize(img_baseline_gauss, [img_l, img_r])
-            entry['img_out_baseline_average'] = denormalize(img_baseline_average, [img_l, img_r])
-            entry['img_out_baseline_median'] = denormalize(img_baseline_median, [img_l, img_r])
+        entry['img_out_baseline'] = denormalize(img_baseline, [img_l, img_r])
+        entry['img_out_baseline_gauss'] = denormalize(img_baseline_gauss, [img_l, img_r])
+        entry['img_out_baseline_average'] = denormalize(img_baseline_average, [img_l, img_r])
+        entry['img_out_baseline_median'] = denormalize(img_baseline_median, [img_l, img_r])
     return entries
 
 
@@ -247,7 +205,8 @@ def output_images(list_of_entries):
                   ', colorbar style = { width = 0.706666\\linewidth, xtick = data}]')
             print('\\addplot[draw = none] coordinates {(0, 0)};')
             print('\\end{axis} \\end{tikzpicture} \\end{center}')
-            print('\\caption{Sample: '+ dirname + ' Filename: \\protect\\url{' + entry['gwy_path'].split('/')[-1].replace('\\', '/') + '}}')
+            # print('\\caption{Sample: '+ dirname + ' Filename: \\protect\\url{' + entry['gwy_path'].split('/')[-1].replace('\\', '/') + '}}')
+            print('\\caption{Sample: '+ dirname + ' Filename: \\protect\\url{' + os.path.basename(entry['gwy_path']) + '}}')
             print('\\end{figure}')
 
 

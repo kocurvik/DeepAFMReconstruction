@@ -4,13 +4,14 @@ import os
 
 import numpy as np
 
-DIRNAME_DICT = {'d008': 'Wafers', 'D010_Bunky': 'Cells', 'INCHAR (MFM sample)': 'Permalloy', 'Kremik': 'Silicon',
-                'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3',
-                'OrigLogos': 'Logos', 'NewLogos': 'Rot Logos', 'CombinedLogos': 'Combined Logos', 'LevelLogos': 'Pre-leveled Logos'}
+# DIRNAME_DICT = {'d008': 'Wafers', 'D010_Bunky': 'Cells', 'INCHAR (MFM sample)': 'Permalloy', 'Kremik': 'Silicon',
+#                 'loga': 'Logos', 'Neno': 'Neno', 'Tescan sample': 'Patterns', 'TGQ1': 'TGQ1', 'TGZ3': 'TGZ3',
+#                 'OrigLogos': 'Logos', 'NewLogos': 'Rot Logos', 'CombinedLogos': 'Combined Logos', 'LevelLogos': 'Pre-leveled Logos', 'MoSi': 'MoSi'}
 
 def parse_command_line():
     """ Parser used for training and inference returns args. Sets up GPUs."""
     parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--level_table', action='store_true', default=False)
     parser.add_argument('data_path', help='Path to the output of the run_eval.py file')
     args = parser.parse_args()
     return args
@@ -43,13 +44,13 @@ def generate_table(data_path):
             # print("mse - mean: {} \t median: {}".format(np.mean(mse), np.median(mse)))
 
     dirs = [all_results[model_name][i]['dir'] for i in range(len(all_results[model_name]))]
-    dir_names = [DIRNAME_DICT[d] for d in dirs]
+    dir_names = dirs
     for metric in ['rmse', 'rcorrelation']:
         for statistic in ['Mean', 'Median']:
             print(20 * '*')
             print(metric + ' + ' + statistic)
             print(20 * '*')
-            topline = 'Model & ' + ' & '.join(dir_names) + '\\\\ \\hline'
+            topline = 'Model &' + 33 * ' ' + ' & '.join(dir_names) + '\\\\ \\hline'
             print(topline)
             for model, list_of_results in all_results.items():
                 vals = []
@@ -69,6 +70,35 @@ def generate_table(data_path):
 
                 line = model + (40 - len(model))*' ' + '& ' + ' & '.join(vals) + '\\\\ \\hline'
                 print(line)
+
+    if args.level_table:
+        modelnames = ['baseline_0.0', 'baseline_0.0_average', 'baseline_0.0_gauss', 'baseline_0.0_median', '555e_mreg_wgl_009']
+        nice_modelnames = ['Baseline', 'Baseline + Average', 'Baseline + Gauss', 'Baseline + Median', 'ResU-Net (ours)']
+
+        leveling_suffixes = ['_level', '_level_masked', '_ll1_masked']
+
+        samples = ['Neno', 'Logos', 'LogosRot']
+
+
+        for i in range(3):
+            print(5 * '*')
+            print(all_results[modelnames[0] + leveling_suffixes[0]][i]['dir'])
+            print(5 * '*')
+
+            for nice_name, modelname in zip(nice_modelnames, modelnames):
+                print(' &  ',nice_name, (40 - len(nice_name)) * ' ' , end =" ")
+
+                for leveling_suffix in leveling_suffixes:
+                    rmse = np.array(all_results[modelname + leveling_suffix][i]['rmse'])
+                    rmse = np.mean(rmse[np.triu_indices(len(rmse), k=1)]) / 1e-9
+                    rcorr = np.array(all_results[modelname + leveling_suffix][i]['rcorrelation'])
+                    rcorr = np.mean(rcorr[np.triu_indices(len(rcorr), k=1)])
+
+                    print(' & {:.4f} & {:.4f} '.format(rmse, rcorr), end='')
+
+                print('\\\\ \\cline{2-8}')
+
+
 
 
 if __name__ == '__main__':

@@ -25,7 +25,7 @@ def subtract_mean_plane(img, mask=None, return_plane=False):
     H = img.ravel()
 
     if mask is not None:
-        mask = np.concatenate([mask.ravel(), mask.ravel()], axis=0)
+        mask = mask.ravel()
         X = X_orig[mask > 0.0]
         H = H[mask > 0.0]
     else:
