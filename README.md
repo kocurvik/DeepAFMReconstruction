@@ -1,6 +1,6 @@
 # Deep Learning from Synthetic Data for Atomic Force Microscopy Image Reconstruction
 
-This is code for the paper submitted to the journal Ultramicroscopy. The pre-print is available at: TBA.
+This is code for the paper submitted to the journal Ultramicroscopy.
 
 ## Setup
 
@@ -18,13 +18,13 @@ You will also need to add the main folder to PYTHONPATH:
 
     export PYTHONPATH=/path/to/the/repo/DeepAFMReconstruction;
 ## Running the evaluation scripts
-You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/EQGdkBbDPqpIqIVPpC_D6HoBKOjynXH1mgtzwnW0LvkvRA?e=W0BYIi).
+You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [TBA](...).
 
-You will also need to download the pytorch model from [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec_Pg042vzJDsnS5WmnAWWIBV92nvYivkoORr5ogPcPbNA?e=bbB0Es).
+You will also need to download the pytorch model from [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ee57hdE5W-1Lp7EIr4L0TtoBQOliNIjUYkYsMYtdKsqNRw?e=B0ozci).
 
 You can then run the evaluation and generate a pdf with results (you might need to create a vis folder in you repo directory) by running:
 
-    python eval/run_eval.py -l -e -i -nw 6 resunet.pth path/to/downloaded/EvalData
+    python eval/run_eval.py -l -e -i -nw 6 resunet_ours.pth path/to/downloaded/EvalData
 You can run all of the baselines by running:
 
     python eval/run_eval.py -l -e -i  -nw 6 baseline path/to/downloaded/EvalData
@@ -37,6 +37,34 @@ You can omit or change the -nw 6 argument to change the number of workers to fit
 Afterwards you can generate a table by running:
 
     python eval/generate_table.py path/to/downloaded/EvalData
+    
+### Additional evaluation using different leveling approaches
+
+You can also run the evaluation as presented in Section 5.4 of the paper by first running:
+
+    python eval/run_eval.py --mask -t 0.0 -i -ll 1 -e -nw 6 resunet_ours.pth path/to/downloaded/EvalMasked
+    python eval/run_eval.py --mask -t 0.0 -i -l -e -nw 6 resunet_ours.pth path/to/downloaded/EvalMasked
+    python eval/run_eval.py -t 0.0 -i -l -e -nw 6 resunet_ours.pth path/to/downloaded/EvalMasked
+
+    python eval/run_eval.py --mask -t 0.0 -i -ll 1 -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py --mask -t 0.0 -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py -t 0.0 -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+
+    python eval/run_eval.py --mask -t 0.0 -m -i -ll 1 -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py --mask -t 0.0 -m -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py -t 0.0 -m -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+
+    python eval/run_eval.py --mask -t 0.0 -g -i -ll 1 -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py --mask -t 0.0 -g -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py -t 0.0 -g -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+
+    python eval/run_eval.py --mask -t 0.0 -a -i -ll 1 -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py --mask -t 0.0 -a -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+    python eval/run_eval.py -t 0.0 -a -i -l -e -nw 6 baseline path/to/downloaded/EvalMasked
+    
+Afterwards you can generate a table by running:
+
+    python eval/generate_table.py -l path/to/downloaded/EvalMasked
 
 ## Running on gwy files
  You can also run the model on individual gwy files. 
