@@ -93,6 +93,7 @@ def extract_eval_data(path, manual_offset=False, load_mask=False):
     entries = []
 
     for filename in filenames:
+        print("Loading:", filename)
         gwy_path = os.path.join(path, filename)
         if load_mask:
             if manual_offset:

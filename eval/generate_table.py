@@ -77,10 +77,8 @@ def generate_table(data_path):
 
         leveling_suffixes = ['_level', '_level_masked', '_ll1_masked']
 
-        samples = ['Neno', 'Logos', 'LogosRot']
 
-
-        for i in range(3):
+        for i in range(2):
             print(5 * '*')
             print(all_results[modelnames[0] + leveling_suffixes[0]][i]['dir'])
             print(5 * '*')

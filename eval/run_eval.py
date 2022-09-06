@@ -27,7 +27,7 @@ def parse_command_line():
     parser.add_argument('-g', '--gauss', action='store_true', default=False, help='Whether to apply the Gaussian filter if the baseline is used')
     parser.add_argument('-a', '--average', action='store_true', default=False, help='Whether to apply the average filter if the baseline is used')
     parser.add_argument('-m', '--median', action='store_true', default=False, help='Whether to apply the median filter if the baseline is used')
-    parser.add_argument('-l', '--level', action='store_true', default=False, help='Whether to subtract the mean plane before and after inference')
+    parser.add_argument('-l', '--level', action='store_true', default=False, help='Whether to subtract the mean plane before and inference')
     parser.add_argument('--mask', action='store_true', default=False, help='Whether to use mask for levelling')
     parser.add_argument('-ll', '--line_by_line_level', type=int, default=0, help='Line by line leveling degree')
     parser.add_argument('-t', '--threshold', type=float, default=0.01, help='Threshold for the baseline method')
