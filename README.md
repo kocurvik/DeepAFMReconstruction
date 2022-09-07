@@ -18,7 +18,7 @@ You will also need to add the main folder to PYTHONPATH:
 
     export PYTHONPATH=/path/to/the/repo/DeepAFMReconstruction;
 ## Running the evaluation scripts
-You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [TBA](...).
+You need to first download the evaluation files along with the json files containing the annotations for alignment. They are stored on [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ec93gfLrzdNDmCwxgkkqEA0BrhvA0lhCSMpf71OOJbsHxg?e=vgEOcp).
 
 You will also need to download the pytorch model from [OneDrive](https://liveuniba-my.sharepoint.com/:u:/g/personal/kocur15_uniba_sk/Ee57hdE5W-1Lp7EIr4L0TtoBQOliNIjUYkYsMYtdKsqNRw?e=B0ozci).
 
