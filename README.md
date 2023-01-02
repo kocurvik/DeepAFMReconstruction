@@ -1,6 +1,10 @@
-# Deep Learning from Synthetic Data for Atomic Force Microscopy Image Reconstruction
+# Correction of AFM data artifacts using a convolutional neural network trained with synthetically generated data
 
-This is code for the paper submitted to the journal Ultramicroscopy.
+This is code for the paper published in the journal Ultramicroscopy
+
+DOI: https://doi.org/10.1016/j.ultramic.2022.113666 
+
+Temporary OA link (expires on feb 21st 2023): https://authors.elsevier.com/a/1gM3g15DbnYM%7Ex
 
 ## Setup
 
@@ -104,3 +108,20 @@ You will have to select and click on the keypoints in the first image. Then you 
 You can use the `-m` option to run manual alignment of left-to-right and right-to-left scans if the simple MSE method does not work. If you do this you will need to manually align the images. You can use the keyboard controls: t and v control contrast, k and s control the offset, c continues to next image and saves offset.
 
 This should create a json file which can be used in the validation script (as discussed above).
+
+## Citation
+
+If you found this code useful please consider citing:
+```
+@article{KOCUR2023113666,
+title = {Correction of AFM data artifacts using a convolutional neural network trained with synthetically generated data},
+journal = {Ultramicroscopy},
+volume = {246},
+pages = {113666},
+year = {2023},
+issn = {0304-3991},
+doi = {https://doi.org/10.1016/j.ultramic.2022.113666},
+url = {https://www.sciencedirect.com/science/article/pii/S0304399122001851},
+author = {Kocur, Viktor and Hegrov{\'a}, Veronika and Pato{\v{c}}ka, Marek and Neuman, Jan and Herout, Adam}
+}
+```
